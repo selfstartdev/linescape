@@ -68,6 +68,8 @@ export type Paint =
 export interface Band {
   width: number;
   paint: Paint;
+  /** Shifts the band sideways from the centerline, in px; positive is left of the direction of travel. Default 0. */
+  offset?: number;
 }
 
 export interface DrawInput {
@@ -97,7 +99,7 @@ export interface LineInput {
   path: PathInput;
   patterns?: readonly PatternInput[];
   features?: readonly FeatureInput[];
-  /** Stroke width in px. Default 40, or the widest band. */
+  /** Stroke width in px. Default 40, or the full width the bands cover. */
   width?: number;
   cap?: "round" | "butt" | "square";
   join?: "round" | "miter" | "bevel";
@@ -110,7 +112,7 @@ export interface LineInput {
   blend?: string;
   /** Default "currentColor". */
   paint?: Paint;
-  /** Concentric stripes on the same centerline, drawn in order (widest first). */
+  /** Stripes along the line, drawn in order: concentric (widest first), or side by side with `offset`. */
   bands?: readonly Band[];
   /** Hollow line: only an edge this many px wide is painted. */
   outline?: { width: number };

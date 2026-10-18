@@ -49,6 +49,12 @@ describe("resolve", () => {
     expect(resolve({ path: { from: "left", to: "right" }, bands: [{ width: 30, paint: "red" }, { width: 90, paint: "blue" }] }).width).toBe(90);
   });
 
+  it("widens the line to cover off-centre bands", () => {
+    const line = resolve({ path: { from: "left", to: "right" }, bands: [{ width: 10, paint: "red", offset: 30 }, { width: 10, paint: "blue", offset: 0 }] });
+    expect(line.width).toBe(70);
+    expect(line.bands).toEqual([{ width: 10, paint: "red", offset: 30 }, { width: 10, paint: "blue" }]);
+  });
+
   it("turns dots into zero-length dashes with round caps", () => {
     const line = resolve({ path: { from: "left", to: "right" }, dash: { dots: 20 }, cap: "butt" });
     expect(line.dash).toEqual([0, 20]);

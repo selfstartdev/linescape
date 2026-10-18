@@ -216,9 +216,15 @@ export function resolve(input: LineInput | Line): Line {
   const i = input as LineInput;
 
   const bands: Band[] | null = i.bands && i.bands.length > 0
-    ? i.bands.map((b, n) => ({ width: positive(`bands[${n}].width`, b.width), paint: resolvePaint(`bands[${n}].paint`, b.paint) }))
+    ? i.bands.map((b, n) => {
+        const band: Band = { width: positive(`bands[${n}].width`, b.width), paint: resolvePaint(`bands[${n}].paint`, b.paint) };
+        const offset = finite(`bands[${n}].offset`, b.offset ?? 0);
+        // Left out when 0, so concentric bands resolve to the shape they were written in.
+        if (offset !== 0) band.offset = offset;
+        return band;
+      })
     : null;
-  const width = positive("width", i.width ?? (bands ? Math.max(...bands.map((b) => b.width)) : LINE_DEFAULTS.width));
+  const width = positive("width", i.width ?? (bands ? Math.max(...bands.map((b) => b.width + 2 * Math.abs(b.offset ?? 0))) : LINE_DEFAULTS.width));
 
   let dash: number[] | null = null;
   let cap = oneOf("cap", i.cap ?? LINE_DEFAULTS.cap, ["round", "butt", "square"] as const);

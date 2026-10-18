@@ -54,6 +54,10 @@ const extras: Record<string, LineInput[]> = {
     { path: { from: "left 65%", to: "right 65%" }, width: 110, patterns: [{ type: "ridges", amplitude: 50, wavelength: 260 }], paint: { along: rainbow } },
     { path: { from: "10% 90%", to: "90% 85%" }, width: 120, taper: { start: 300, end: 500 }, paint: { radial: { stops: rainbow } } },
   ],
+  offsets: [
+    { path: { points: [[80, 420], [400, 620], [700, 420], [1100, 620]], smooth: 0 }, bands: [{ width: 40, paint: "#264653", offset: 25 }, { width: 40, paint: { along: rainbow }, offset: -25 }] },
+    { path: { from: "left 85%", to: "right 85%" }, patterns: [{ type: "wave", amplitude: 30, wavelength: 260 }], features: [{ type: "loop", at: 0.5, radius: 50 }], bands: [{ width: 8, paint: "#6a4c93", offset: 14 }, { width: 8, paint: "#1982c4", offset: -14 }] },
+  ],
   animation: [
     { path: { from: "left 30%", to: "right 30%" }, width: 30, animate: { draw: { from: "center" }, trigger: "visible" } },
     { path: { from: "left 50%", to: "right 50%" }, width: 30, dash: [20, 10], animate: { flow: true, draw: true, trigger: "scroll" } },

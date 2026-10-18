@@ -4,7 +4,7 @@
  * fitted with cubics; corners get round joins on the outside, ends get caps.
  */
 import { add, cross, scale, sub, type PathData, type Segment, type Vec } from "../geometry";
-import { fitFunction } from "./index";
+import { fitFunction, mergeLines } from "./index";
 import { cornersOf, frameAt, type MeasuredPath } from "./slice";
 
 export type Cap = "round" | "butt" | "square";
@@ -12,6 +12,8 @@ export type Cap = "round" | "butt" | "square";
 export interface OutlineOptions {
   /** Width at arc length s. */
   width: (s: number) => number;
+  /** Sideways shift of the shape from the centerline at arc length s, positive to the left. Default 0. */
+  offset?: (s: number) => number;
   capStart: Cap;
   capEnd: Cap;
   closed: boolean;
@@ -37,13 +39,13 @@ function arc(center: Vec, r: number, a0: number, a1: number, out: Segment[]): vo
 const angleOf = (v: Vec) => Math.atan2(v.y, v.x);
 
 /** The outline of the centerline between arc lengths s0 and s1. */
-export function outline(m: MeasuredPath, s0: number, s1: number, { width, capStart, capEnd, closed, tolerance = 0.15 }: OutlineOptions): PathData {
+export function outline(m: MeasuredPath, s0: number, s1: number, { width, offset = () => 0, capStart, capEnd, closed, tolerance = 0.15 }: OutlineOptions): PathData {
   const corners = cornersOf(m, closed).filter((s) => s > s0 + 1e-6 && s < s1 - 1e-6);
   const knots = [s0, ...corners, s1];
   const eps = 1e-4;
   const side = (sign: 1 | -1) => (s: number) => {
     const f = frameAt(m, s);
-    return add(f.p, scale(left(f.t), (sign * width(s)) / 2));
+    return add(f.p, scale(left(f.t), offset(s) + (sign * width(s)) / 2));
   };
   const maxStep = 40;
 
@@ -73,9 +75,12 @@ export function outline(m: MeasuredPath, s0: number, s1: number, { width, capSta
       const c = sign === 1 ? b : a;
       const before = frameAt(m, c - eps), after = frameAt(m, c + eps);
       const turnLeft = cross(before.t, after.t) < 0; // y points down on screen
-      const outside = (sign === 1) === !turnLeft;
-      const r = width(c) / 2;
-      const n1 = scale(left(sign === 1 ? before.t : after.t), sign), n2 = scale(left(sign === 1 ? after.t : before.t), sign);
+      // This edge's signed distance from the centerline: it's on the outside of the turn when it's on the far side.
+      const d = offset(c) + (sign * width(c)) / 2;
+      const outside = turnLeft ? d < 0 : d > 0;
+      const r = Math.abs(d);
+      const dir = d === 0 ? sign : Math.sign(d);
+      const n1 = scale(left(sign === 1 ? before.t : after.t), dir), n2 = scale(left(sign === 1 ? after.t : before.t), dir);
       if (outside) {
         const a1 = angleOf(n1);
         let a2 = angleOf(n2);
@@ -91,11 +96,15 @@ export function outline(m: MeasuredPath, s0: number, s1: number, { width, capSta
 
   const startFrame = frameAt(m, s0), endFrame = frameAt(m, s1);
   const start = side(1)(s0);
+  // Caps are centred on the shape, which may sit off the centerline.
+  const centre = (f: { p: Vec; t: Vec }, s: number) => add(f.p, scale(left(f.t), offset(s)));
   run(1);
-  cap(endFrame.p, endFrame.t, width(s1) / 2, capEnd, segments);
+  cap(centre(endFrame, s1), endFrame.t, width(s1) / 2, capEnd, segments);
   run(-1);
-  cap(startFrame.p, scale(startFrame.t, -1), width(s0) / 2, capStart, segments);
-  return { start, segments: segments.filter((seg, i) => seg.type !== "L" || i === 0 || distanceSq(seg.to, segments[i - 1]!.to) > 1e-8), closed: true };
+  cap(centre(startFrame, s0), scale(startFrame.t, -1), width(s0) / 2, capStart, segments);
+  // Drop zero-length joins, then merge straight runs (offset sides of straight lines come out as many short lines).
+  const kept = segments.filter((seg, i) => seg.type !== "L" || distanceSq(seg.to, i === 0 ? start : segments[i - 1]!.to) > 1e-8);
+  return { start, segments: mergeLines(start, kept), closed: true };
 }
 
 /** A cap from the left edge to the right edge at an end heading along t. */

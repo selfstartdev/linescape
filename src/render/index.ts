@@ -90,7 +90,8 @@ interface Geometry {
 }
 
 function geometry(line: Line, ctx: Context): Geometry {
-  const undulate = ctx.motion && line.animate?.undulate && line.patterns.length > 0 && !line.taper && !isAlong(line);
+  // Undulating morphs one path through frames; outlines (taper, offset bands) and slices can't keep their commands fixed.
+  const undulate = ctx.motion && line.animate?.undulate && line.patterns.length > 0 && !line.taper && !isAlong(line) && !hasOffsets(line);
   const curve = buildCurve(line, ctx.size, { uniform: !!undulate });
   const path = emit(curve, { uniform: !!undulate });
   const d = formatPath(path, ctx.precision);
@@ -105,6 +106,7 @@ function geometry(line: Line, ctx: Context): Geometry {
   return { path, d, frames, measured, length: measured.length, bounds: bounds(path), closed: path.closed };
 }
 
+const hasOffsets = (line: Line) => !!line.bands?.some((b) => b.offset);
 const isAlong = (line: Line) => [line.paint, ...(line.bands ?? []).map((b) => b.paint)].some((p) => typeof p === "object" && "along" in p);
 
 function renderLine(line: Line, index: number, ctx: Context): SvgNode {
@@ -151,18 +153,22 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
     );
   }
 
-  /** The shapes for one paint at one width: a stroke, an outline, or slices for `along`. */
-  const shapes = (paint: Paint, w: number): SvgNode[] => {
-    if (typeof paint === "object" && "along" in paint) return alongSlices(paint.along, w);
+  /** The shapes for one paint at one width: a stroke, an outline (tapered or off-centre), or slices for `along`. */
+  const shapes = (paint: Paint, w: number, offset = 0): SvgNode[] => {
+    if (typeof paint === "object" && "along" in paint) return alongSlices(paint.along, w, offset);
     const ref = paintRef(paint, lineBox, ctx);
-    if (taper) return [node("path", { d: formatPath(outline(g.measured, 0, g.length, { width: widthAt(w), capStart: line.cap, capEnd: line.cap, closed: g.closed }), ctx.precision), fill: ref })];
+    if (taper || offset !== 0) {
+      const d = formatPath(outline(g.measured, 0, g.length, { width: widthAt(w), offset: () => offset, capStart: line.cap, capEnd: line.cap, closed: g.closed }), ctx.precision);
+      return [node("path", { d, fill: ref })];
+    }
     const attrs: Record<string, string> = { d: g.d, ...strokeAttrs(w), stroke: ref };
     if (line.dash) attrs["stroke-dasharray"] = line.dash.map(fmt).join(" ");
     if (flowClass) attrs.class = flowClass;
     return [node("path", attrs, undulate(g.frames))];
   };
 
-  const alongSlices = (stops: readonly Stop[], w: number): SvgNode[] => {
+  const alongSlices = (stops: readonly Stop[], w: number, offset: number): SvgNode[] => {
+    const outlined = !!taper || offset !== 0;
     const parsed = stops.map((s, i) => {
       const color = parseColor(s.color);
       if (!color) throw new TypeError(`linescape: along stop ${i} has colour ${JSON.stringify(s.color)}, which can't be blended; use hex, rgb(), hsl() or a named colour`);
@@ -171,9 +177,9 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
     const colour = (s: number) => colorAt(parsed, g.length > 0 ? s / g.length : 0);
     const out: SvgNode[] = [];
     const fill = (c: RGBA, attr: "fill" | "stroke") => ({ [attr]: toHex(c), ...(c.a < 1 ? { [`${attr}-opacity`]: fmt(c.a) } : {}) });
-    const n = Math.max(16, Math.min(taper ? 200 : 600, Math.ceil(g.length / (taper ? 8 : 4))));
+    const n = Math.max(16, Math.min(outlined ? 200 : 600, Math.ceil(g.length / (outlined ? 8 : 4))));
     const step = g.length / n;
-    if (!taper && line.join === "round") {
+    if (!outlined && line.join === "round") {
       // Round joins at corners: slices end square, so fill the outside of each corner with a disc.
       for (const c of cornersOf(g.measured, g.closed)) {
         const p = frameAt(g.measured, c).p;
@@ -185,9 +191,9 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
       // Each slice overlaps the next by half a pixel to hide seams.
       const b = Math.min(g.length, a + step + 0.5);
       const c = colour(a + step / 2);
-      if (taper) {
+      if (outlined) {
         const capStart: Cap = i === 0 ? line.cap : "butt", capEnd: Cap = i === n - 1 ? line.cap : "butt";
-        out.push(node("path", { d: formatPath(outline(g.measured, a, b, { width: widthAt(w), capStart, capEnd, closed: false }), ctx.precision), ...fill(c, "fill") }));
+        out.push(node("path", { d: formatPath(outline(g.measured, a, b, { width: widthAt(w), offset: () => offset, capStart, capEnd, closed: false }), ctx.precision), ...fill(c, "fill") }));
       } else {
         const attrs: Record<string, string> = { d: formatPath(slicePath(g.measured, a, b), ctx.precision), ...strokeAttrs(w), ...fill(c, "stroke") };
         attrs["stroke-linecap"] = i === 0 || i === n - 1 ? line.cap : "butt";
@@ -201,7 +207,7 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
     return out;
   };
 
-  let content: SvgNode[] = line.bands ? line.bands.flatMap((b) => shapes(b.paint, b.width)) : shapes(line.paint, line.width);
+  let content: SvgNode[] = line.bands ? line.bands.flatMap((b) => shapes(b.paint, b.width, b.offset ?? 0)) : shapes(line.paint, line.width);
 
   // Hollow: mask out the middle, leaving an edge `outline.width` wide.
   if (line.outline) {

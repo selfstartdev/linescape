@@ -31,7 +31,7 @@ export function emit(curve: Curve, { tolerance = 0.1, uniform = false }: EmitOpt
 }
 
 /** Joins consecutive straight segments that continue in the same direction. */
-function mergeLines(start: Vec, segments: Segment[]): Segment[] {
+export function mergeLines(start: Vec, segments: Segment[]): Segment[] {
   const out: Segment[] = [];
   let from = start;
   let prevFrom = start;

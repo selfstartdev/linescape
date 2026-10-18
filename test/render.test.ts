@@ -42,6 +42,17 @@ describe("render", () => {
     expect(new Set(paths.map((p) => p.attrs.d)).size).toBe(1);
   });
 
+  it("draws off-centre bands as filled outlines beside the centerline", () => {
+    const { nodes } = all({ path: { from: [100, 350], to: [1100, 350] }, bands: [{ width: 10, paint: "red", offset: 40 }, { width: 10, paint: "blue" }] });
+    const [offset, centre] = nodes.filter((n) => n.tag === "path");
+    expect(offset!.attrs).toMatchObject({ fill: "red" });
+    expect(offset!.attrs.d).toMatch(/Z$/);
+    // Left of travel (rightwards) is up: y = 350 - 40 ± 5.
+    const ys = [...offset!.attrs.d!.matchAll(/[ML][\d.]+ ([\d.]+)/g)].map((m) => Number(m[1]));
+    expect(Math.min(...ys)).toBeCloseTo(305, 0);
+    expect(centre!.attrs).toMatchObject({ stroke: "blue", "stroke-width": "10" });
+  });
+
   it("makes hollow lines with a mask", () => {
     const { nodes } = all({ path: { from: "left", to: "right" }, width: 100, outline: { width: 10 } });
     const mask = nodes.find((n) => n.tag === "mask")!;

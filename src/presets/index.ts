@@ -96,6 +96,15 @@ export const presets = {
     width: 44,
     outline: { width: 6 },
   },
+  /** Three parallel lines sweeping across together. */
+  parallel: {
+    path: { from: "left 30%", to: "right 25%", bend: 0.12 },
+    bands: [
+      { width: 10, paint: "#e63946", offset: 30 },
+      { width: 10, paint: "#f4a261" },
+      { width: 10, paint: "#2a9d8f", offset: -30 },
+    ],
+  },
   /** Dashes that keep flowing along a gentle curve. */
   current: {
     path: { from: "left 30%", to: "right 70%", bend: -0.1 },
