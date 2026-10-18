@@ -3,6 +3,7 @@ export { render, serialize, toSvg, type LinesInput, type RenderedLayer, type Ren
 export { resolve, ANIMATE_DEFAULTS, FEATURE_DEFAULTS, LINE_DEFAULTS, PATTERN_DEFAULTS } from "./spec/resolve";
 export { linescapeParentStyle } from "./parent";
 export { presets, type PresetName } from "./presets";
+export { PALETTES, suggest, SUGGESTION_KINDS, type SuggestionKind, type SuggestOptions } from "./suggest";
 export type {
   Animate,
   AnimateInput,

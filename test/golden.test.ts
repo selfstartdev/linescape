@@ -7,7 +7,7 @@
  * treat it as a deliberate decision and record it in a changeset.
  */
 import { describe, expect, it } from "vitest";
-import { presets, toSvg, type LineInput } from "../src";
+import { presets, suggest, SUGGESTION_KINDS, toSvg, type LineInput } from "../src";
 import { designs } from "./designs";
 
 const sizes = [
@@ -70,5 +70,13 @@ describe("golden extras", () => {
 describe("golden presets", () => {
   it.each(Object.entries(presets))("%s", async (name, line) => {
     await expect(toSvg(line, { width: 1440, height: 900 }) + "\n").toMatchFileSnapshot(`golden/presets/${name}.svg`);
+  });
+});
+
+describe("golden suggestions", () => {
+  it("suggest() for fixed seeds", async () => {
+    const fixture = Object.fromEntries(SUGGESTION_KINDS.map((kind) => [kind, [0, 1, 2].map((i) => suggest({ seed: `golden-${i}`, kind }))]));
+    fixture.any = [0, 1, 2, 3, 4].map((i) => suggest({ seed: i }));
+    await expect(JSON.stringify(fixture, null, 2) + "\n").toMatchFileSnapshot("golden/suggest.json");
   });
 });

@@ -1,0 +1,763 @@
+{
+  "band": [
+    {
+      "path": {
+        "through": "57% 57%",
+        "angle": 15
+      },
+      "width": 270,
+      "paint": {
+        "linear": {
+          "angle": 105,
+          "stops": [
+            {
+              "offset": 0,
+              "color": "#457b9d"
+            },
+            {
+              "offset": 1,
+              "color": "#a8dadc"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "path": {
+        "through": "56% 60%",
+        "angle": 21
+      },
+      "width": 190,
+      "paint": {
+        "linear": {
+          "angle": 180,
+          "stops": [
+            {
+              "offset": 0,
+              "color": "#2a9d8f"
+            },
+            {
+              "offset": 1,
+              "color": "#e9c46a"
+            }
+          ]
+        }
+      },
+      "opacity": 0.8
+    },
+    {
+      "path": {
+        "through": "43% 47%",
+        "angle": 19
+      },
+      "width": 240,
+      "paint": {
+        "linear": {
+          "angle": 60,
+          "stops": [
+            {
+              "offset": 0,
+              "color": "#2a9d8f"
+            },
+            {
+              "offset": 1,
+              "color": "#e9c46a"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "sweep": [
+    {
+      "path": {
+        "from": "left 71%",
+        "to": "right 22%",
+        "bend": -0.03
+      },
+      "width": 26,
+      "features": [
+        {
+          "type": "loop",
+          "at": 0.5,
+          "radius": 45,
+          "side": "right"
+        }
+      ],
+      "paint": {
+        "along": [
+          {
+            "offset": 0,
+            "color": "#a8dadc"
+          },
+          {
+            "offset": 1,
+            "color": "#f1faee"
+          }
+        ]
+      }
+    },
+    {
+      "path": {
+        "from": "left 54%",
+        "to": "right 64%",
+        "bend": 0.09
+      },
+      "width": 46,
+      "features": [
+        {
+          "type": "loop",
+          "at": 0.65,
+          "radius": 45,
+          "side": "right"
+        }
+      ],
+      "paint": "#e9c46a"
+    },
+    {
+      "path": {
+        "from": "left 28%",
+        "to": "right 24%",
+        "bend": -0.07
+      },
+      "width": 64,
+      "features": [
+        {
+          "type": "loop",
+          "at": 0.54,
+          "radius": 36,
+          "side": "right"
+        }
+      ],
+      "paint": {
+        "along": [
+          {
+            "offset": 0,
+            "color": "#2a9d8f"
+          },
+          {
+            "offset": 0.5,
+            "color": "#e9c46a"
+          },
+          {
+            "offset": 1,
+            "color": "#f4a261"
+          }
+        ]
+      }
+    }
+  ],
+  "squiggle": [
+    {
+      "path": {
+        "from": "5% 25%",
+        "to": "89% 21%",
+        "bend": 0.03
+      },
+      "width": 19,
+      "patterns": [
+        {
+          "type": "wave",
+          "amplitude": 22,
+          "wavelength": 205
+        }
+      ],
+      "paint": "#457b9d"
+    },
+    {
+      "path": {
+        "from": "15% 29%",
+        "to": "82% 40%",
+        "bend": 0.01
+      },
+      "width": 11,
+      "patterns": [
+        {
+          "type": "ridges",
+          "amplitude": 27,
+          "wavelength": 130
+        }
+      ],
+      "paint": "#e76f51"
+    },
+    {
+      "path": {
+        "from": "13% 80%",
+        "to": "87% 55%",
+        "bend": 0.03
+      },
+      "width": 21,
+      "patterns": [
+        {
+          "type": "scallop",
+          "amplitude": 20,
+          "wavelength": 175
+        }
+      ],
+      "paint": "#f4a261",
+      "animate": {
+        "draw": {
+          "duration": 1700
+        }
+      }
+    }
+  ],
+  "loops": [
+    {
+      "path": {
+        "from": "left 57%",
+        "to": "right 37%",
+        "bend": 0.1
+      },
+      "width": 13,
+      "features": [
+        {
+          "type": "loop",
+          "at": 0.36,
+          "radius": 43,
+          "side": "right"
+        },
+        {
+          "type": "loop",
+          "at": 0.63,
+          "radius": 29,
+          "side": "right"
+        }
+      ],
+      "paint": "#457b9d"
+    },
+    {
+      "path": {
+        "from": "left 46%",
+        "to": "right 66%",
+        "bend": 0.02
+      },
+      "width": 24,
+      "features": [
+        {
+          "type": "loop",
+          "at": 0.53,
+          "radius": 48,
+          "side": "right"
+        }
+      ],
+      "paint": "#264653"
+    },
+    {
+      "path": {
+        "from": "left 49%",
+        "to": "right 51%",
+        "bend": -0.09
+      },
+      "width": 28,
+      "features": [
+        {
+          "type": "loop",
+          "at": 0.34,
+          "radius": 32,
+          "side": "right"
+        },
+        {
+          "type": "loop",
+          "at": 0.66,
+          "radius": 23,
+          "side": "right"
+        }
+      ],
+      "paint": "#2a9d8f"
+    }
+  ],
+  "swirl": [
+    {
+      "path": {
+        "from": "54% 105%",
+        "to": "86% 80%",
+        "bend": -0.05
+      },
+      "width": 18,
+      "features": [
+        {
+          "type": "spiral",
+          "at": "end",
+          "radius": 120,
+          "turns": 1.75,
+          "side": "right"
+        }
+      ],
+      "paint": "#1d3557"
+    },
+    {
+      "path": {
+        "from": "37% -5%",
+        "to": "86% 20%",
+        "bend": -0.05
+      },
+      "width": 20,
+      "features": [
+        {
+          "type": "spiral",
+          "at": "end",
+          "radius": 115,
+          "turns": 3,
+          "side": "left"
+        }
+      ],
+      "paint": "#f4a261"
+    },
+    {
+      "path": {
+        "from": "left 49%",
+        "to": "12% 76%",
+        "bend": 0.02
+      },
+      "width": 16,
+      "features": [
+        {
+          "type": "spiral",
+          "at": "end",
+          "radius": 115,
+          "turns": 2.25,
+          "side": "right"
+        }
+      ],
+      "paint": "#2a9d8f"
+    }
+  ],
+  "ridges": [
+    {
+      "path": {
+        "points": [
+          "69% -5%",
+          "39% 31%",
+          "66% 67%",
+          "36% 105%"
+        ]
+      },
+      "width": 56,
+      "patterns": [
+        {
+          "type": "ridges",
+          "amplitude": 34,
+          "wavelength": 140,
+          "range": [
+            0.12,
+            0.88
+          ],
+          "ease": 140
+        }
+      ],
+      "paint": "#457b9d"
+    },
+    {
+      "path": {
+        "points": [
+          "60% -5%",
+          "28% 30%",
+          "71% 65%",
+          "42% 105%"
+        ]
+      },
+      "width": 60,
+      "patterns": [
+        {
+          "type": "ridges",
+          "amplitude": 20,
+          "wavelength": 115,
+          "range": [
+            0.12,
+            0.88
+          ],
+          "ease": 220
+        }
+      ],
+      "paint": "#264653"
+    },
+    {
+      "path": {
+        "points": [
+          "62% -5%",
+          "34% 33%",
+          "73% 74%",
+          "35% 105%"
+        ]
+      },
+      "width": 48,
+      "patterns": [
+        {
+          "type": "steps",
+          "amplitude": 18,
+          "wavelength": 90,
+          "range": [
+            0.12,
+            0.88
+          ],
+          "ease": 110
+        }
+      ],
+      "paint": "#264653"
+    }
+  ],
+  "stripes": [
+    {
+      "path": {
+        "from": "left 43%",
+        "to": "right 26%",
+        "bend": 0.07
+      },
+      "bands": [
+        {
+          "width": 290,
+          "paint": "#a8dadc"
+        },
+        {
+          "width": 146,
+          "paint": "#f1faee"
+        }
+      ]
+    },
+    {
+      "path": {
+        "from": "left 25%",
+        "to": "right 75%",
+        "bend": 0.11
+      },
+      "bands": [
+        {
+          "width": 250,
+          "paint": "#2a9d8f"
+        },
+        {
+          "width": 188,
+          "paint": "#e9c46a"
+        },
+        {
+          "width": 126,
+          "paint": "#f4a261"
+        },
+        {
+          "width": 62,
+          "paint": "#e76f51"
+        }
+      ]
+    },
+    {
+      "path": {
+        "from": "left 54%",
+        "to": "right 42%",
+        "bend": 0.01
+      },
+      "bands": [
+        {
+          "width": 280,
+          "paint": "#2a9d8f"
+        },
+        {
+          "width": 186,
+          "paint": "#e9c46a"
+        },
+        {
+          "width": 94,
+          "paint": "#f4a261"
+        }
+      ]
+    }
+  ],
+  "brush": [
+    {
+      "path": {
+        "from": "16% 60%",
+        "to": "89% 29%",
+        "bend": 0.18
+      },
+      "width": 115,
+      "taper": {
+        "start": 120,
+        "end": 640
+      },
+      "paint": {
+        "along": [
+          {
+            "offset": 0,
+            "color": "#457b9d"
+          },
+          {
+            "offset": 1,
+            "color": "#a8dadc"
+          }
+        ]
+      }
+    },
+    {
+      "path": {
+        "from": "9% 66%",
+        "to": "95% 15%",
+        "bend": 0.2
+      },
+      "width": 100,
+      "taper": {
+        "start": 280,
+        "end": 340
+      },
+      "paint": {
+        "along": [
+          {
+            "offset": 0,
+            "color": "#2a9d8f"
+          },
+          {
+            "offset": 0.5,
+            "color": "#e9c46a"
+          },
+          {
+            "offset": 1,
+            "color": "#f4a261"
+          }
+        ]
+      }
+    },
+    {
+      "path": {
+        "from": "16% 60%",
+        "to": "82% 16%",
+        "bend": -0.12
+      },
+      "width": 70,
+      "taper": {
+        "start": 210,
+        "end": 490
+      },
+      "paint": {
+        "along": [
+          {
+            "offset": 0,
+            "color": "#e9c46a"
+          },
+          {
+            "offset": 1,
+            "color": "#f4a261"
+          }
+        ]
+      }
+    }
+  ],
+  "coil": [
+    {
+      "path": {
+        "from": "left 47%",
+        "to": "right 63%",
+        "bend": -0.06
+      },
+      "width": 4,
+      "patterns": [
+        {
+          "type": "coil",
+          "amplitude": 36,
+          "wavelength": 55,
+          "range": [
+            0.1,
+            0.9
+          ],
+          "ease": 120
+        }
+      ],
+      "paint": "#457b9d"
+    },
+    {
+      "path": {
+        "from": "left 31%",
+        "to": "right 48%",
+        "bend": 0.07
+      },
+      "width": 4,
+      "patterns": [
+        {
+          "type": "coil",
+          "amplitude": 36,
+          "wavelength": 95,
+          "range": [
+            0.1,
+            0.9
+          ],
+          "ease": 190
+        }
+      ],
+      "paint": "#2a9d8f"
+    },
+    {
+      "path": {
+        "from": "left 40%",
+        "to": "right 64%",
+        "bend": 0.08
+      },
+      "width": 8,
+      "patterns": [
+        {
+          "type": "coil",
+          "amplitude": 26,
+          "wavelength": 75,
+          "range": [
+            0.1,
+            0.9
+          ],
+          "ease": 100
+        }
+      ],
+      "paint": "#e9c46a"
+    }
+  ],
+  "frame": [
+    {
+      "path": {
+        "ring": {
+          "center": "center",
+          "radius": [
+            "40%",
+            "46%"
+          ]
+        }
+      },
+      "width": 8,
+      "dash": {
+        "dots": 20
+      },
+      "paint": "#1d3557"
+    },
+    {
+      "path": {
+        "ring": {
+          "center": "center",
+          "radius": [
+            "43%",
+            "41%"
+          ]
+        }
+      },
+      "width": 7,
+      "dash": {
+        "dots": 20
+      },
+      "paint": "#f4a261"
+    },
+    {
+      "path": {
+        "ring": {
+          "center": "center",
+          "radius": [
+            "47%",
+            "43%"
+          ]
+        }
+      },
+      "width": 9,
+      "dash": {
+        "dots": 18
+      },
+      "paint": "#2a9d8f"
+    }
+  ],
+  "any": [
+    {
+      "path": {
+        "points": [
+          "73% -5%",
+          "36% 27%",
+          "80% 69%",
+          "27% 105%"
+        ]
+      },
+      "width": 40,
+      "patterns": [
+        {
+          "type": "steps",
+          "amplitude": 34,
+          "wavelength": 85,
+          "range": [
+            0.12,
+            0.88
+          ],
+          "ease": 180
+        }
+      ],
+      "paint": "#bc6c25"
+    },
+    {
+      "path": {
+        "from": "61% -5%",
+        "to": "79% 18%",
+        "bend": -0.02
+      },
+      "width": 14,
+      "features": [
+        {
+          "type": "spiral",
+          "at": "end",
+          "radius": 155,
+          "turns": 2.5,
+          "side": "right"
+        }
+      ],
+      "paint": "#f4a261"
+    },
+    {
+      "path": {
+        "from": "left 25%",
+        "to": "right 41%",
+        "bend": 0.12
+      },
+      "width": 19,
+      "features": [
+        {
+          "type": "loop",
+          "at": 0.2,
+          "radius": 28,
+          "side": "left"
+        },
+        {
+          "type": "loop",
+          "at": 0.46,
+          "radius": 39,
+          "side": "left"
+        },
+        {
+          "type": "loop",
+          "at": 0.76,
+          "radius": 29,
+          "side": "left"
+        }
+      ],
+      "paint": "#283618"
+    },
+    {
+      "path": {
+        "from": "15% 75%",
+        "to": "87% 29%",
+        "bend": 0
+      },
+      "width": 20,
+      "patterns": [
+        {
+          "type": "scallop",
+          "amplitude": 19,
+          "wavelength": 185
+        }
+      ],
+      "paint": "#7c5cff"
+    },
+    {
+      "path": {
+        "from": "6% 46%",
+        "to": "91% 32%",
+        "bend": 0.08
+      },
+      "width": 14,
+      "patterns": [
+        {
+          "type": "ridges",
+          "amplitude": 38,
+          "wavelength": 130
+        }
+      ],
+      "paint": "#9d8189"
+    }
+  ]
+}
