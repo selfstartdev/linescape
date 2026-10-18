@@ -2,6 +2,7 @@
 export { render, serialize, toSvg, type LinesInput, type RenderedLayer, type RenderOptions, type SvgNode } from "./render";
 export { resolve, ANIMATE_DEFAULTS, FEATURE_DEFAULTS, LINE_DEFAULTS, PATTERN_DEFAULTS } from "./spec/resolve";
 export { linescapeParentStyle } from "./parent";
+export { presets, type PresetName } from "./presets";
 export type {
   Animate,
   AnimateInput,

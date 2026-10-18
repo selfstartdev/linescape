@@ -7,7 +7,7 @@
  * treat it as a deliberate decision and record it in a changeset.
  */
 import { describe, expect, it } from "vitest";
-import { toSvg, type LineInput } from "../src";
+import { presets, toSvg, type LineInput } from "../src";
 import { designs } from "./designs";
 
 const sizes = [
@@ -64,5 +64,11 @@ const extras: Record<string, LineInput[]> = {
 describe("golden extras", () => {
   it.each(Object.entries(extras))("%s", async (name, lines) => {
     await expect(toSvg(lines, { width: 1440, height: 900 }) + "\n").toMatchFileSnapshot(`golden/extras/${name}.svg`);
+  });
+});
+
+describe("golden presets", () => {
+  it.each(Object.entries(presets))("%s", async (name, line) => {
+    await expect(toSvg(line, { width: 1440, height: 900 }) + "\n").toMatchFileSnapshot(`golden/presets/${name}.svg`);
   });
 });
