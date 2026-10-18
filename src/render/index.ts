@@ -115,12 +115,14 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
 
   // Width along the line, for tapered lines (drawn as filled outlines).
   const taper = line.taper;
+  // Eased (1 − (1 − u)²) so the taper meets the full width without a kink.
+  const ease = (u: number) => (u >= 1 ? 1 : u <= 0 ? 0 : 1 - (1 - u) * (1 - u));
   const widthAt = (w: number) => (s: number) => {
     if (!taper) return w;
     let k = 1;
-    if (taper.start > 0) k = Math.min(k, s / taper.start);
-    if (taper.end > 0) k = Math.min(k, (g.length - s) / taper.end);
-    return w * Math.max(0, Math.min(1, k));
+    if (taper.start > 0) k = Math.min(k, ease(s / taper.start));
+    if (taper.end > 0) k = Math.min(k, ease((g.length - s) / taper.end));
+    return w * k;
   };
 
   const undulate = (frames: string[] | null): SvgNode[] =>
