@@ -109,6 +109,9 @@ const isAlong = (line: Line) => [line.paint, ...(line.bands ?? []).map((b) => b.
 
 function renderLine(line: Line, index: number, ctx: Context): SvgNode {
   const g = geometry(line, ctx);
+  // Names for this line's masks and animations. They depend on the spec, not the element's size,
+  // so re-rendering after a resize keeps the same elements and animations don't restart.
+  const key = hashString(JSON.stringify([index, line])).toString(36);
   const fmt = (n: number) => formatNumber(n, ctx.precision);
   const half = line.width / 2;
   const lineBox: Bounds = { minX: g.bounds.minX - half, minY: g.bounds.minY - half, maxX: g.bounds.maxX + half, maxY: g.bounds.maxY + half };
@@ -140,7 +143,7 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
   let flowClass: string | null = null;
   if (line.animate?.flow && line.dash && !taper && !isAlong(line)) {
     const period = line.dash.reduce((a, b) => a + b, 0) * (line.dash.length % 2 === 1 ? 2 : 1);
-    flowClass = cssName(ctx, "flow", [index, period, line.animate.flow.speed]);
+    flowClass = cssName(ctx, "flow", key);
     ctx.css.push(
       `@keyframes ${flowClass}{to{stroke-dashoffset:${fmt(-period)}}}`,
       `.${flowClass}{animation:${flowClass} ${fmt((period / line.animate.flow.speed) * 1000)}ms linear infinite}`,
@@ -209,7 +212,7 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
         : node("path", { d: g.d, ...strokeAttrs(w), stroke: colour }, undulate(g.frames));
     const shapesInMask = [maskShape(line.width, "#fff")];
     if (inner > 0) shapesInMask.push(maskShape(inner, "#000"));
-    content = [maskGroup(ctx, "hollow", shapesInMask, content, line.width)];
+    content = [maskGroup(ctx, "hollow", key, shapesInMask, content, line.width)];
   }
 
   // Draw: reveal the line through a mask whose stroke is drawn on with a dash animation.
@@ -223,7 +226,7 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
       return { start: sub(s.p, scale(s.t, pad)), segments: [{ type: "L", to: p.start }, ...p.segments, { type: "L", to: add(e.p, scale(e.t, pad)) }], closed: false };
     };
     const total = g.length + 2 * pad + 2;
-    const className = cssName(ctx, "draw", [index, total, draw.duration, draw.delay, draw.easing, draw.from, line.animate!.trigger, line.animate!.repeat]);
+    const className = cssName(ctx, "draw", key);
     const center = draw.from === "center" || g.closed;
     const from = draw.from === "center"
       ? `stroke-dasharray:0 ${fmt(total)};stroke-dashoffset:${fmt(-total / 2)}`
@@ -259,7 +262,7 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
       },
       undulate(maskFrames),
     );
-    content = [maskGroup(ctx, "draw", [maskPath], content, line.width)];
+    content = [maskGroup(ctx, "draw", key, [maskPath], content, line.width)];
   }
 
   const attrs: Record<string, string> = {};
@@ -269,7 +272,7 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
 }
 
 /** Wraps content in a group masked by `shapes` (white shows, black hides). */
-function maskGroup(ctx: Context, kind: string, shapes: SvgNode[], content: SvgNode[], width: number): SvgNode {
+function maskGroup(ctx: Context, kind: string, key: string, shapes: SvgNode[], content: SvgNode[], width: number): SvgNode {
   const pad = width * 2 + 8;
   const attrs = {
     maskUnits: "userSpaceOnUse",
@@ -278,13 +281,13 @@ function maskGroup(ctx: Context, kind: string, shapes: SvgNode[], content: SvgNo
     width: formatNumber(ctx.size.width + 2 * pad),
     height: formatNumber(ctx.size.height + 2 * pad),
   };
-  const id = `${ctx.prefix}-${kind}-${hashString(JSON.stringify([attrs, shapes])).toString(36)}`;
+  const id = `${ctx.prefix}-${kind}-${key}`;
   ctx.defs.set(id, node("mask", { id, ...attrs }, shapes));
   return node("g", { mask: `url(#${id})` }, content);
 }
 
-function cssName(ctx: Context, kind: string, parts: unknown[]): string {
-  return `${ctx.prefix}-${kind}-${hashString(JSON.stringify(parts)).toString(36)}`;
+function cssName(ctx: Context, kind: string, key: string): string {
+  return `${ctx.prefix}-${kind}-${key}`;
 }
 
 /** A paint as a stroke/fill value, adding a gradient definition if needed. */
