@@ -42,6 +42,12 @@ export interface RenderedLayer {
   children: SvgNode[];
   /** Whether any line waits until it's visible (`trigger: "visible"`) before drawing. */
   waitsForVisibility: boolean;
+  /**
+   * Whether any line draws with the scroll (`trigger: "scroll"`). Where CSS scroll-driven animations
+   * aren't supported, a host can set `data-scrub` on the root <svg> and drive `--linescape-progress`
+   * (0–1) itself; <Linescape> does.
+   */
+  followsScroll: boolean;
 }
 
 export type LinesInput = LineInput | Line | readonly (LineInput | Line)[];
@@ -54,7 +60,7 @@ const node = (tag: string, attrs: Record<string, string> = {}, children: (SvgNod
 export function render(lines: LinesInput, { width, height, idPrefix = "linescape", precision = 2, motion = true }: RenderOptions): RenderedLayer {
   if (!(width > 0) || !(height > 0)) throw new RangeError(`linescape: width and height must be greater than 0, got ${width} × ${height}`);
   const list = (Array.isArray(lines) ? lines : [lines]) as (LineInput | Line)[];
-  const ctx: Context = { size: { width, height }, prefix: idPrefix, precision, motion, defs: new Map(), css: [], waitsForVisibility: false };
+  const ctx: Context = { size: { width, height }, prefix: idPrefix, precision, motion, defs: new Map(), css: [], waitsForVisibility: false, followsScroll: false };
   const groups = list.map((input, i) => renderLine(resolve(input), i, ctx));
 
   const children: SvgNode[] = [];
@@ -64,7 +70,7 @@ export function render(lines: LinesInput, { width, height, idPrefix = "linescape
   }
   if (ctx.defs.size > 0) children.push(node("defs", {}, [...ctx.defs.values()]));
   children.push(...groups);
-  return { width, height, className: idPrefix, children, waitsForVisibility: ctx.waitsForVisibility };
+  return { width, height, className: idPrefix, children, waitsForVisibility: ctx.waitsForVisibility, followsScroll: ctx.followsScroll };
 }
 
 interface Context {
@@ -76,6 +82,7 @@ interface Context {
   defs: Map<string, SvgNode>;
   css: string[];
   waitsForVisibility: boolean;
+  followsScroll: boolean;
 }
 
 interface Geometry {
@@ -240,7 +247,13 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
     const timing = `${fmt(draw.duration)}ms ${draw.easing} ${fmt(draw.delay)}ms ${line.animate!.repeat === "infinite" ? "infinite" : fmt(line.animate!.repeat)} both`;
     ctx.css.push(`@keyframes ${className}{from{${from}}to{stroke-dasharray:${fmt(total)} ${fmt(total)};stroke-dashoffset:0}}`, `.${className}{animation:${className} ${timing}}`);
     if (line.animate!.trigger === "scroll") {
-      ctx.css.push(`@supports (animation-timeline:view()){.${className}{animation:${className} linear both;animation-timeline:--${ctx.prefix}-tl;animation-range:entry 0% exit 0%}}`);
+      ctx.followsScroll = true;
+      ctx.css.push(
+        `@supports (animation-timeline:view()){.${className}{animation:${className} linear both;animation-timeline:--${ctx.prefix}-tl;animation-range:entry 0% exit 0%}}`,
+        // Fallback, switched on by the host with data-scrub: a paused one-second animation, scrubbed by a
+        // negative delay of progress × 1s.
+        `.${ctx.prefix}[data-scrub] .${className}{animation:${className} 1000ms linear both paused;animation-delay:calc(var(--linescape-progress,0) * -1000ms)}`,
+      );
     } else if (line.animate!.trigger === "visible") {
       ctx.waitsForVisibility = true;
       ctx.css.push(`.${ctx.prefix}[data-paused] .${className}{animation-play-state:paused}`);

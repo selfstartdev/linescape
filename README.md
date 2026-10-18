@@ -140,7 +140,7 @@ animate: {
 }
 ```
 
-Drawing and flowing are CSS animations, switched off for `prefers-reduced-motion`. Scroll-linked drawing uses CSS scroll-driven animations, and draws on load where they aren't supported. Undulating uses SMIL; `<Linescape>` leaves it out for reduced motion. Undulating doesn't apply to tapered lines, `along` paint or off-centre bands.
+Drawing and flowing are CSS animations, switched off for `prefers-reduced-motion`. Scroll-linked drawing uses CSS scroll-driven animations; where they aren't supported, `<Linescape>` follows the scroll itself (static SVG draws on load there). Undulating uses SMIL; `<Linescape>` leaves it out for reduced motion. Undulating doesn't apply to tapered lines, `along` paint or off-centre bands.
 
 ## Presets and suggestions
 

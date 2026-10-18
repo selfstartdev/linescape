@@ -120,6 +120,13 @@ describe("animation", () => {
     expect(css).toContain(".linescape{view-timeline:--linescape-tl block}");
   });
 
+  it("has a scrubbable fallback for scroll-linked drawing", () => {
+    const { layer, css } = drawn({ draw: true, trigger: "scroll" });
+    expect(layer.followsScroll).toBe(true);
+    expect(css).toMatch(/\.linescape\[data-scrub\] \.linescape-draw-\w+\{animation:linescape-draw-\w+ 1000ms linear both paused;animation-delay:calc\(var\(--linescape-progress,0\) \* -1000ms\)\}/);
+    expect(drawn({ draw: true }).layer.followsScroll).toBe(false);
+  });
+
   it("can wait until visible", () => {
     const { layer, css } = drawn({ draw: true, trigger: "visible" });
     expect(layer.waitsForVisibility).toBe(true);

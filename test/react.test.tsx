@@ -127,6 +127,42 @@ describe("<Linescape>", () => {
     expect(svg.hasAttribute("data-paused")).toBe(false);
   });
 
+  describe("scroll-linked drawing", () => {
+    const line = { path: { from: "left", to: "right" }, animate: { draw: true, trigger: "scroll" } } as const;
+    const frames: FrameRequestCallback[] = [];
+    beforeEach(() => {
+      vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => frames.push(cb));
+      vi.stubGlobal("cancelAnimationFrame", () => {});
+      vi.stubGlobal("innerHeight", 800);
+    });
+
+    it("scrubs from the scroll position where CSS scroll timelines aren't supported", async () => {
+      vi.stubGlobal("CSS", { supports: () => false });
+      layerSize = { width: 1200, height: 2000 };
+      const rect = { top: 400 };
+      vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+        () => ({ width: layerSize.width, height: layerSize.height, top: rect.top, left: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON() {} }) as DOMRect,
+      );
+      const { container } = await hydrate({ line });
+      const layer = layerOf(container);
+      expect(container.querySelector("svg")!.hasAttribute("data-scrub")).toBe(true);
+      // Top 400px into an 800px window, 2000px tall: (800 - 400) / 2000.
+      expect(layer.style.getPropertyValue("--linescape-progress")).toBe("0.2000");
+      rect.top = -1200;
+      await act(async () => {
+        window.dispatchEvent(new Event("scroll"));
+        frames.splice(0).forEach((f) => f(0));
+      });
+      expect(layer.style.getPropertyValue("--linescape-progress")).toBe("1.0000");
+    });
+
+    it("leaves it to CSS where scroll timelines are supported", async () => {
+      vi.stubGlobal("CSS", { supports: () => true });
+      const { container } = await hydrate({ line });
+      expect(container.querySelector("svg")!.hasAttribute("data-scrub")).toBe(false);
+    });
+  });
+
   it("drops undulation for reduced motion", async () => {
     vi.stubGlobal("matchMedia", (q: string) => ({ matches: q.includes("reduce"), addEventListener() {}, removeEventListener() {} }));
     const { container } = await hydrate({ line: { path: { from: "left", to: "right" }, patterns: [{ type: "wave" }], animate: { undulate: true } } });

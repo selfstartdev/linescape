@@ -105,6 +105,40 @@ export function Linescape({
     [linesKey, size.width, size.height, idPrefix, motion], // linesKey stands in for list
   );
 
+  // Scroll-linked drawing is CSS where scroll-driven animations are supported. Elsewhere, scrub the
+  // animation from here: progress runs 0 → 1 from the layer's top entering the bottom of the window
+  // to its bottom reaching it (or its top reaching the top, if it's shorter than the window), the
+  // same range as the CSS version. Set after mount, so server and first client render match.
+  const [scrub, setScrub] = useState(false);
+  const follows = (layer?.followsScroll ?? false) && motion;
+  useEffect(() => {
+    const el = ref.current;
+    if (!follows || !el || supportsScrollTimeline()) {
+      setScrub(false);
+      return;
+    }
+    setScrub(true);
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const progress = Math.min(1, Math.max(0, (vh - rect.top) / Math.max(rect.height, vh)));
+      el.style.setProperty("--linescape-progress", progress.toFixed(4));
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [follows]);
+
   const waits = layer?.waitsForVisibility ?? false;
   useEffect(() => {
     const el = ref.current;
@@ -151,6 +185,7 @@ export function Linescape({
           className={layer.className}
           focusable="false"
           data-paused={waits && !visible ? "" : undefined}
+          data-scrub={scrub ? "" : undefined}
           style={{ position: "absolute", top: 0, left: 0, display: "block", overflow: "visible" }}
         >
           {layer.children.map(toElement)}
@@ -158,6 +193,10 @@ export function Linescape({
       )}
     </div>
   );
+}
+
+function supportsScrollTimeline(): boolean {
+  return typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("animation-timeline: view()");
 }
 
 /** "stroke-width" → "strokeWidth": React's names for SVG attributes and style properties. */
