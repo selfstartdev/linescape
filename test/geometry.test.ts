@@ -58,6 +58,20 @@ describe("backbone", () => {
   });
 });
 
+describe("loops", () => {
+  const height = (roundness: number) => {
+    const line = resolve({ path: { from: [0, 400], to: [1000, 400] }, features: [{ type: "loop", at: 0.5, radius: 60, roundness }] });
+    const piece = buildCurve(line, { width: 1000, height: 800 }).pieces[0]!;
+    let top = Infinity;
+    for (let i = 0; i <= 4000; i++) top = Math.min(top, piece.at(piece.t0 + ((piece.t1 - piece.t0) * i) / 4000).y);
+    return 400 - top;
+  };
+
+  it("are twice their radius tall, however round", () => {
+    for (const r of [0, 0.4, 1]) expect(height(r)).toBeCloseTo(120, 0);
+  });
+});
+
 describe("emit", () => {
   const fits = (input: LineInput) => {
     const line = resolve(input);
