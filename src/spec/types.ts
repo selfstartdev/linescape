@@ -47,7 +47,8 @@ export interface PatternInput {
 }
 
 export type FeatureInput =
-  | { type: "loop"; at: number; radius?: number; turns?: number; side?: Side }
+  /** A loop at `at` (0–1 along the line). `radius` is half its height; `roundness` runs from a cursive teardrop (0) to nearly a circle (1). */
+  | { type: "loop"; at: number; radius?: number; roundness?: number; turns?: number; side?: Side }
   | { type: "spiral"; at: "start" | "end"; radius?: number; turns?: number; inner?: number; side?: Side }
   | { type: "kink"; at: number; length?: number; angle?: number; side?: Side };
 
@@ -132,7 +133,7 @@ export type ResolvedPath =
 export type Pattern = Required<PatternInput>;
 
 export type Feature =
-  | { type: "loop"; at: number; radius: number; turns: number; side: Side }
+  | { type: "loop"; at: number; radius: number; roundness: number; turns: number; side: Side }
   | { type: "spiral"; at: "start" | "end"; radius: number; turns: number; inner: number; side: Side }
   | { type: "kink"; at: number; length: number; angle: number; side: Side };
 

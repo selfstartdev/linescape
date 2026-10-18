@@ -32,7 +32,7 @@ describe("resolve", () => {
     });
     expect(line.patterns).toEqual([{ type: "ridges", amplitude: 24, wavelength: 96, range: [0, 1], ease: 0, phase: 0, side: "left" }]);
     expect(line.features).toEqual([
-      { type: "loop", at: 0.5, radius: 40, turns: 1, side: "left" },
+      { type: "loop", at: 0.5, radius: 50, roundness: 0.4, turns: 1, side: "left" },
       { type: "spiral", at: "end", radius: 120, turns: 2, inner: 0.2, side: "left" },
     ]);
     expect(line.animate).toEqual({

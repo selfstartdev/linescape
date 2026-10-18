@@ -39,7 +39,7 @@ export const PATTERN_DEFAULTS: Record<PatternType, { amplitude: number; waveleng
 };
 
 export const FEATURE_DEFAULTS = {
-  loop: { radius: 40, turns: 1, side: "left" },
+  loop: { radius: 50, roundness: 0.4, turns: 1, side: "left" },
   spiral: { radius: 120, turns: 2, inner: 0.2, side: "left" },
   kink: { length: 80, angle: 40, side: "left" },
 } as const;
@@ -135,6 +135,7 @@ function resolveFeature(f: FeatureInput, i: number): Feature {
         type: "loop",
         at: fraction(`${name}.at`, f.at),
         radius: positive(`${name}.radius`, f.radius ?? FEATURE_DEFAULTS.loop.radius),
+        roundness: fraction(`${name}.roundness`, f.roundness ?? FEATURE_DEFAULTS.loop.roundness),
         turns: positive(`${name}.turns`, f.turns ?? FEATURE_DEFAULTS.loop.turns),
         side,
       };

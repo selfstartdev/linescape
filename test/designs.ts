@@ -13,7 +13,7 @@ export const designs: Record<string, LineInput> = {
   swoosh: {
     path: { from: "left 80%", to: "right 30%", bend: 0.08 },
     width: 48,
-    features: [{ type: "loop", at: 0.55, radius: 50 }],
+    features: [{ type: "loop", at: 0.55, radius: 90 }],
     paint: "#7c5cff",
   },
   underline: {

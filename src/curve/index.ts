@@ -55,8 +55,12 @@ interface ActiveFeature {
 
 const DEFAULT_MAX_STEP = 400;
 
-/** How far a loop doubles back: 2π · amplitude / wavelength of its coil turn. */
-const LOOPINESS = 3;
+/**
+ * How far a loop doubles back (2π · amplitude / wavelength of its coil turn), from roundness 0 to 1.
+ * 3 is a cursive teardrop; by 16 the turn is nearly a circle. Spaced geometrically, so equal steps of
+ * roundness look like equal changes.
+ */
+const LOOPINESS = [3, 16] as const;
 
 export function buildCurve(line: Line, size: Size, { shift = 0, uniform = false }: CurveOptions = {}): Curve {
   const spiralStart = line.features.find((f): f is Extract<Feature, { type: "spiral" }> => f.type === "spiral" && f.at === "start");
@@ -97,11 +101,12 @@ export function buildCurve(line: Line, size: Size, { shift = 0, uniform = false 
     const s = v0 + f.at * (v1 - v0);
     const sign = f.side === "left" ? 1 : -1;
     if (f.type === "loop") {
-      // A coil turn with loopiness k = 2π·amplitude / wavelength has an eye whose radius of
-      // curvature is amplitude · (1 − 1/k)². `radius` is that eye radius.
+      // One coil turn per loop. Its height is 2 × amplitude whatever the loopiness, so `radius` (half the
+      // height) sets the size and `roundness` only the shape.
       const turns = Math.max(1, Math.round(f.turns));
-      const amplitude = f.radius / (1 - 1 / LOOPINESS) ** 2;
-      const wavelength = (2 * Math.PI * amplitude) / LOOPINESS;
+      const k = LOOPINESS[0] * (LOOPINESS[1] / LOOPINESS[0]) ** f.roundness;
+      const amplitude = f.radius;
+      const wavelength = (2 * Math.PI * amplitude) / k;
       const span = turns * wavelength;
       features.push({ profile: PROFILES.coil, amplitude, wavelength, sign, a: s - span / 2, b: s + span / 2 });
     } else {

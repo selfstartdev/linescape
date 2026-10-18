@@ -111,7 +111,7 @@ const GENERATORS: Record<SuggestionKind, Generator> = {
     ...(p.chance("faint", 0.3) ? { opacity: p.num("opacity", 0.5, 0.85, 0.05) } : {}),
   }),
   sweep: (p, palette) => {
-    const features: FeatureInput[] = p.chance("loop", 0.6) ? [{ type: "loop", at: p.num("loop.at", 0.35, 0.65, 0.01), radius: p.num("loop.radius", 30, 70), side: p.one("loop.side", ["left", "right"] as const) }] : [];
+    const features: FeatureInput[] = p.chance("loop", 0.6) ? [{ type: "loop", at: p.num("loop.at", 0.35, 0.65, 0.01), radius: p.num("loop.radius", 55, 110), roundness: p.num("loop.roundness", 0, 0.7, 0.05), side: p.one("loop.side", ["left", "right"] as const) }] : [];
     return {
       path: { from: edgePoint(p, "from", "left"), to: edgePoint(p, "to", "right"), bend: p.signed("bend", 0.03, 0.2, 0.01) },
       width: p.num("width", 18, 70, 2),
@@ -136,10 +136,12 @@ const GENERATORS: Record<SuggestionKind, Generator> = {
   loops: (p, palette) => {
     const n = p.num("count", 1, 3);
     const side = p.one("side", ["left", "right"] as const);
+    const roundness = p.num("roundness", 0, 0.7, 0.05);
     const features: FeatureInput[] = Array.from({ length: n }, (_, i) => ({
       type: "loop",
       at: round((i + 1) / (n + 1) + (p.r.value("at", i) - 0.5) * 0.1, 0.01),
-      radius: p.num(`radius.${i}`, 18, 48),
+      radius: p.num(`radius.${i}`, 35, 80),
+      roundness,
       side,
     }));
     return {

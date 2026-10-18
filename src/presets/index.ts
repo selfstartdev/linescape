@@ -23,7 +23,7 @@ export const presets = {
   swoosh: {
     path: { from: "left 80%", to: "right 30%", bend: 0.08 },
     width: 48,
-    features: [{ type: "loop", at: 0.55, radius: 50 }],
+    features: [{ type: "loop", at: 0.55, radius: 90 }],
     paint: "#7c5cff",
   },
   /** A squiggle to put under a heading (inside the heading's wrapper). */
@@ -117,7 +117,7 @@ export const presets = {
   scribble: {
     path: { points: ["left 70%", "30% 40%", "60% 65%", "right 25%"] },
     width: 14,
-    features: [{ type: "loop", at: 0.3, radius: 28 }, { type: "loop", at: 0.62, radius: 22, side: "right" }],
+    features: [{ type: "loop", at: 0.3, radius: 55 }, { type: "loop", at: 0.62, radius: 45, side: "right" }],
     animate: { draw: { duration: 1800 } },
   },
 } satisfies Record<string, LineInput>;

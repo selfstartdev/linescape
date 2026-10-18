@@ -80,7 +80,8 @@
         {
           "type": "loop",
           "at": 0.5,
-          "radius": 45,
+          "radius": 76,
+          "roundness": 0.5,
           "side": "right"
         }
       ],
@@ -108,7 +109,8 @@
         {
           "type": "loop",
           "at": 0.65,
-          "radius": 45,
+          "radius": 75,
+          "roundness": 0.35000000000000003,
           "side": "right"
         }
       ],
@@ -125,7 +127,8 @@
         {
           "type": "loop",
           "at": 0.54,
-          "radius": 36,
+          "radius": 63,
+          "roundness": 0.2,
           "side": "right"
         }
       ],
@@ -214,13 +217,15 @@
         {
           "type": "loop",
           "at": 0.36,
-          "radius": 43,
+          "radius": 72,
+          "roundness": 0.65,
           "side": "right"
         },
         {
           "type": "loop",
           "at": 0.63,
-          "radius": 29,
+          "radius": 52,
+          "roundness": 0.65,
           "side": "right"
         }
       ],
@@ -237,7 +242,8 @@
         {
           "type": "loop",
           "at": 0.53,
-          "radius": 48,
+          "radius": 80,
+          "roundness": 0,
           "side": "right"
         }
       ],
@@ -254,13 +260,15 @@
         {
           "type": "loop",
           "at": 0.34,
-          "radius": 32,
+          "radius": 56,
+          "roundness": 0.30000000000000004,
           "side": "right"
         },
         {
           "type": "loop",
           "at": 0.66,
-          "radius": 23,
+          "radius": 42,
+          "roundness": 0.30000000000000004,
           "side": "right"
         }
       ],
@@ -709,19 +717,22 @@
         {
           "type": "loop",
           "at": 0.2,
-          "radius": 28,
+          "radius": 50,
+          "roundness": 0.45,
           "side": "left"
         },
         {
           "type": "loop",
           "at": 0.46,
-          "radius": 39,
+          "radius": 67,
+          "roundness": 0.45,
           "side": "left"
         },
         {
           "type": "loop",
           "at": 0.76,
-          "radius": 29,
+          "radius": 52,
+          "roundness": 0.45,
           "side": "left"
         }
       ],

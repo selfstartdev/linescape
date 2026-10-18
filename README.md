@@ -102,7 +102,7 @@ Patterns can be stacked and placed on different ranges.
 
 | Feature | |
 |---|---|
-| `{ type: "loop", at, radius?, turns?, side? }` | A cursive loop at a point (`at`, 0–1 along the line). `radius` is the loop's eye. |
+| `{ type: "loop", at, radius?, roundness?, turns?, side? }` | A loop at a point (`at`, 0–1 along the line). `radius` (default 50) is half its height; `roundness` runs from a cursive teardrop (0) to nearly a circle (1), default 0.4. |
 | `{ type: "spiral", at: "start" \| "end", radius?, turns?, inner?, side? }` | The line curls into a spiral. |
 | `{ type: "kink", at, length?, angle?, side? }` | A sharp spike. |
 
