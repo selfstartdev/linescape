@@ -106,35 +106,50 @@ export function Linescape({
   );
 
   // Scroll-linked drawing is CSS where scroll-driven animations are supported. Elsewhere, scrub the
-  // animation from here: progress runs 0 → 1 from the layer's top entering the bottom of the window
-  // to its bottom reaching it (or its top reaching the top, if it's shorter than the window), the
-  // same range as the CSS version. Set after mount, so server and first client render match.
+  // animation from here: progress runs 0 → 1 from the layer's top entering the bottom of its scroll
+  // container to its bottom reaching it (or its top reaching the top, if it's shorter), the same range
+  // as the CSS version. Set after mount, so server and first client render match.
   const [scrub, setScrub] = useState(false);
   const follows = (layer?.followsScroll ?? false) && motion;
   useEffect(() => {
     const el = ref.current;
-    if (!follows || !el || supportsScrollTimeline()) {
+    // Checked here too: on mount, `motion` is still its initial true until the effect above re-renders.
+    if (!follows || !el || supportsScrollTimeline() || prefersReducedMotion()) {
       setScrub(false);
       return;
     }
     setScrub(true);
+    const port = scrollContainer(el);
     let frame = 0;
+    let written = "";
     const update = () => {
       frame = 0;
       const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const progress = Math.min(1, Math.max(0, (vh - rect.top) / Math.max(rect.height, vh)));
-      el.style.setProperty("--linescape-progress", progress.toFixed(4));
+      // The scrollport, without scrollbars: what the CSS view timeline measures against.
+      const top = port ? port.getBoundingClientRect().top + port.clientTop : 0;
+      const height = port ? port.clientHeight : document.documentElement.clientHeight;
+      const span = Math.max(rect.height, height);
+      if (!(span > 0)) return;
+      const value = Math.min(1, Math.max(0, (height - (rect.top - top)) / span)).toFixed(4);
+      if (value === written) return;
+      written = value;
+      el.style.setProperty("--linescape-progress", value);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(update);
     };
     update();
-    window.addEventListener("scroll", schedule, { passive: true });
+    // Capture: scroll events from elements don't bubble, and the layer may be in a scrolling panel.
+    document.addEventListener("scroll", schedule, { passive: true, capture: true });
     window.addEventListener("resize", schedule);
+    // Layout can move the layer without a scroll: images loading above it, the page growing.
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
+    observer?.observe(el);
+    observer?.observe(document.body);
     return () => {
-      window.removeEventListener("scroll", schedule);
+      document.removeEventListener("scroll", schedule, { capture: true });
       window.removeEventListener("resize", schedule);
+      observer?.disconnect();
       if (frame) cancelAnimationFrame(frame);
     };
   }, [follows]);
@@ -164,7 +179,9 @@ export function Linescape({
     bottom: 0,
     left: 0,
     right: 0,
-    overflow: clip ? "hidden" : "visible",
+    // clip, not hidden: hidden makes the layer a scroll container, and the svg's view timeline would
+    // track the layer (which never scrolls) instead of the page.
+    overflow: clip ? "clip" : "visible",
     zIndex: -1,
     pointerEvents: "none",
     ...(reveal === "fade" ? { opacity: hidden ? 0 : 1, transition: "opacity 150ms ease-out" } : {}),
@@ -197,6 +214,18 @@ export function Linescape({
 
 function supportsScrollTimeline(): boolean {
   return typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("animation-timeline: view()");
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** The nearest scroll container around `el` (itself included), or null for the viewport. */
+function scrollContainer(el: HTMLElement): HTMLElement | null {
+  for (let n: HTMLElement | null = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+    if (/^(auto|scroll|hidden|overlay)$/.test(getComputedStyle(n).overflowY)) return n;
+  }
+  return null;
 }
 
 /** "stroke-width" → "strokeWidth": React's names for SVG attributes and style properties. */

@@ -40,7 +40,11 @@ beforeEach(() => {
   );
 });
 
+// Unmounted after each test, so no listeners or observers outlive it.
+const roots: { unmount(): void }[] = [];
+
 afterEach(() => {
+  act(() => roots.splice(0).forEach((r) => r.unmount()));
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   observers.clear();
@@ -59,7 +63,7 @@ async function hydrate(props: LinescapeProps) {
   const errors: unknown[] = [];
   vi.spyOn(console, "error").mockImplementation((...args) => errors.push(args));
   await act(async () => {
-    hydrateRoot(container, page(props), { onRecoverableError: (e) => errors.push(e) });
+    roots.push(hydrateRoot(container, page(props), { onRecoverableError: (e) => errors.push(e) }));
   });
   return { container, errors };
 }
@@ -130,30 +134,76 @@ describe("<Linescape>", () => {
   describe("scroll-linked drawing", () => {
     const line = { path: { from: "left", to: "right" }, animate: { draw: true, trigger: "scroll" } } as const;
     const frames: FrameRequestCallback[] = [];
+    let viewportHeight = 800;
+    const rect = { top: 400 };
     beforeEach(() => {
+      frames.length = 0;
+      viewportHeight = 800;
+      rect.top = 400;
       vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => frames.push(cb));
       vi.stubGlobal("cancelAnimationFrame", () => {});
-      vi.stubGlobal("innerHeight", 800);
-    });
-
-    it("scrubs from the scroll position where CSS scroll timelines aren't supported", async () => {
       vi.stubGlobal("CSS", { supports: () => false });
+      // The scrollport without scrollbars, as the CSS view timeline measures it.
+      vi.spyOn(document.documentElement, "clientHeight", "get").mockImplementation(() => viewportHeight);
       layerSize = { width: 1200, height: 2000 };
-      const rect = { top: 400 };
       vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
         () => ({ width: layerSize.width, height: layerSize.height, top: rect.top, left: 0, right: 0, bottom: 0, x: 0, y: 0, toJSON() {} }) as DOMRect,
       );
+    });
+    const flush = (target: EventTarget = window) =>
+      act(async () => {
+        target.dispatchEvent(new Event("scroll"));
+        frames.splice(0).forEach((f) => f(0));
+      });
+
+    it("scrubs from the scroll position where CSS scroll timelines aren't supported", async () => {
       const { container } = await hydrate({ line });
       const layer = layerOf(container);
       expect(container.querySelector("svg")!.hasAttribute("data-scrub")).toBe(true);
       // Top 400px into an 800px window, 2000px tall: (800 - 400) / 2000.
       expect(layer.style.getPropertyValue("--linescape-progress")).toBe("0.2000");
       rect.top = -1200;
+      await flush(document);
+      expect(layer.style.getPropertyValue("--linescape-progress")).toBe("1.0000");
+    });
+
+    it("follows a scrolling element, not just the window", async () => {
+      const { container } = await hydrate({ line });
+      const layer = layerOf(container);
+      rect.top = -200;
+      // Element scroll events don't bubble: only a capture listener sees this one.
+      await flush(container.querySelector("main")!);
+      expect(layer.style.getPropertyValue("--linescape-progress")).toBe("0.5000");
+    });
+
+    it("updates when layout moves the layer without a scroll", async () => {
+      const { container } = await hydrate({ line });
+      rect.top = 0;
       await act(async () => {
-        window.dispatchEvent(new Event("scroll"));
+        observers.forEach((cb) => cb());
         frames.splice(0).forEach((f) => f(0));
       });
-      expect(layer.style.getPropertyValue("--linescape-progress")).toBe("1.0000");
+      expect(layerOf(container).style.getPropertyValue("--linescape-progress")).toBe("0.4000");
+    });
+
+    it("writes nothing when there's nothing to measure against", async () => {
+      viewportHeight = 0;
+      layerSize = { width: 1200, height: 0 };
+      const { container } = await hydrate({ line, reveal: "none" });
+      expect(layerOf(container).style.getPropertyValue("--linescape-progress")).toBe("");
+    });
+
+    it("never scrubs for reduced motion, even on the first commit", async () => {
+      vi.stubGlobal("matchMedia", (q: string) => ({ matches: q.includes("reduce"), addEventListener() {}, removeEventListener() {} }));
+      // Every attribute change, even one undone before the test looks.
+      const changed: string[] = [];
+      const observer = new MutationObserver((records) => records.forEach((r) => changed.push(r.attributeName!)));
+      observer.observe(document.body, { attributes: true, subtree: true });
+      const { container } = await hydrate({ line });
+      changed.push(...observer.takeRecords().map((r) => r.attributeName!));
+      observer.disconnect();
+      expect(container.querySelector("svg")!.hasAttribute("data-scrub")).toBe(false);
+      expect(changed).not.toContain("data-scrub");
     });
 
     it("leaves it to CSS where scroll timelines are supported", async () => {
@@ -161,6 +211,11 @@ describe("<Linescape>", () => {
       const { container } = await hydrate({ line });
       expect(container.querySelector("svg")!.hasAttribute("data-scrub")).toBe(false);
     });
+  });
+
+  it("clips without making the layer a scroll container", async () => {
+    const { container } = await hydrate({ line: designs.band });
+    expect(layerOf(container).style.overflow).toBe("clip");
   });
 
   it("drops undulation for reduced motion", async () => {
@@ -198,7 +253,9 @@ describe("<Linescape>", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const { createRoot } = await import("react-dom/client");
-    await act(async () => createRoot(container).render(createElement("section", null, createElement(Linescape, { line: designs.band }))));
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () => root.render(createElement("section", null, createElement(Linescape, { line: designs.band }))));
     expect(warn).toHaveBeenCalledOnce();
     expect(String(warn.mock.calls[0]![0])).toContain("linescapeParentStyle");
   });

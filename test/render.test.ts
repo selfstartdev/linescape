@@ -123,8 +123,20 @@ describe("animation", () => {
   it("has a scrubbable fallback for scroll-linked drawing", () => {
     const { layer, css } = drawn({ draw: true, trigger: "scroll" });
     expect(layer.followsScroll).toBe(true);
-    expect(css).toMatch(/\.linescape\[data-scrub\] \.linescape-draw-\w+\{animation:linescape-draw-\w+ 1000ms linear both paused;animation-delay:calc\(var\(--linescape-progress,0\) \* -1000ms\)\}/);
+    expect(css).toMatch(/\.linescape\[data-scrub\] \.linescape-draw-\w+\{animation:linescape-draw-\w+-s 1000ms linear both paused;animation-delay:calc\(var\(--linescape-progress,0\) \* -1000ms\)\}/);
     expect(drawn({ draw: true }).layer.followsScroll).toBe(false);
+  });
+
+  it("scrubs a new animation, not the on-load one paused part-way", () => {
+    const { css } = drawn({ draw: true, trigger: "scroll" });
+    const name = /\[data-scrub\] \.(linescape-draw-\w+)\{animation:([\w-]+) /.exec(css ?? "")!;
+    expect(name[2]).toBe(`${name[1]}-s`);
+    expect(css).toContain(`@keyframes ${name[2]}{`);
+  });
+
+  it("never scrubs for reduced motion", () => {
+    const { css } = drawn({ draw: true, trigger: "scroll" });
+    expect(css).toMatch(/@media \(prefers-reduced-motion:no-preference\)\{\.linescape\[data-scrub\] [^{]+\{[^}]+\}\}/);
   });
 
   it("can wait until visible", () => {

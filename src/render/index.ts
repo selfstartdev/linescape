@@ -245,14 +245,17 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
       ? `stroke-dasharray:0 ${fmt(total)};stroke-dashoffset:${fmt(-total / 2)}`
       : `stroke-dashoffset:${fmt(draw.from === "end" ? -total : total)}`;
     const timing = `${fmt(draw.duration)}ms ${draw.easing} ${fmt(draw.delay)}ms ${line.animate!.repeat === "infinite" ? "infinite" : fmt(line.animate!.repeat)} both`;
-    ctx.css.push(`@keyframes ${className}{from{${from}}to{stroke-dasharray:${fmt(total)} ${fmt(total)};stroke-dashoffset:0}}`, `.${className}{animation:${className} ${timing}}`);
+    const keyframes = (name: string) => `@keyframes ${name}{from{${from}}to{stroke-dasharray:${fmt(total)} ${fmt(total)};stroke-dashoffset:0}}`;
+    ctx.css.push(keyframes(className), `.${className}{animation:${className} ${timing}}`);
     if (line.animate!.trigger === "scroll") {
       ctx.followsScroll = true;
       ctx.css.push(
         `@supports (animation-timeline:view()){.${className}{animation:${className} linear both;animation-timeline:--${ctx.prefix}-tl;animation-range:entry 0% exit 0%}}`,
         // Fallback, switched on by the host with data-scrub: a paused one-second animation, scrubbed by a
-        // negative delay of progress × 1s.
-        `.${ctx.prefix}[data-scrub] .${className}{animation:${className} 1000ms linear both paused;animation-delay:calc(var(--linescape-progress,0) * -1000ms)}`,
+        // negative delay of progress × 1s. Its own keyframes, so it's a new animation starting at 0, not the
+        // on-load one paused wherever it had got to. Never for reduced motion, which this would outrank.
+        keyframes(`${className}-s`),
+        `@media (prefers-reduced-motion:no-preference){.${ctx.prefix}[data-scrub] .${className}{animation:${className}-s 1000ms linear both paused;animation-delay:calc(var(--linescape-progress,0) * -1000ms)}}`,
       );
     } else if (line.animate!.trigger === "visible") {
       ctx.waitsForVisibility = true;
