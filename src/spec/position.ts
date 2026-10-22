@@ -39,7 +39,8 @@ function parseLengthToken(token: string): LengthToken | null {
 const KEYWORDS = { left: "x", right: "x", top: "y", bottom: "y", center: "both" } as const;
 type Keyword = keyof typeof KEYWORDS;
 
-const isKeyword = (t: string): t is Keyword => t in KEYWORDS;
+// Own keys only: `in` would also take "constructor" and "__proto__" for keywords.
+const isKeyword = (t: string): t is Keyword => Object.prototype.hasOwnProperty.call(KEYWORDS, t);
 
 /** Fraction of the axis a keyword stands for. */
 const KEYWORD_FRACTION: Record<Keyword, number> = { left: 0, top: 0, center: 0.5, right: 1, bottom: 1 };

@@ -96,6 +96,13 @@ export function Linescape({
     if (isDev() && attach === "scroll") warnAboutParent(ref.current);
   }, [attach]);
 
+  // overflow: clip is dropped where it isn't supported (Safari before 16), leaving nothing clipped.
+  // hidden is fine there: those browsers have no scroll timelines for it to get in the way of.
+  useEffect(() => {
+    const el = ref.current;
+    if (el && clip && typeof CSS !== "undefined" && typeof CSS.supports === "function" && !CSS.supports("overflow", "clip")) el.style.overflow = "hidden";
+  }, [clip]);
+
   // Lines are plain data, so a serialized key keeps inline objects from re-rendering every time.
   const list = lines ?? (line ? [line] : []);
   const linesKey = JSON.stringify(list);
@@ -162,15 +169,19 @@ export function Linescape({
       setVisible(true);
       return;
     }
+    // 15% of the layer, or for a layer much taller than the window (which can never be 15% on screen),
+    // enough of it to fill 15% of the window.
+    const tall = el.getBoundingClientRect().height;
+    const threshold = tall > 0 ? Math.min(0.15, (0.15 * window.innerHeight) / tall) : 0.15;
     const observer = new IntersectionObserver((entries) => {
       if (entries.some((e) => e.isIntersecting)) {
         setVisible(true);
         observer.disconnect();
       }
-    }, { threshold: 0.15 });
+    }, { threshold });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [waits, visible]);
+  }, [waits, visible, size.height]);
 
   const hidden = reveal === "fade" && measured === null;
   const layerStyle: CSSProperties = {
@@ -220,9 +231,12 @@ function prefersReducedMotion(): boolean {
   return typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/** The nearest scroll container around `el` (itself included), or null for the viewport. */
+/**
+ * The nearest scroll container around the layer `el`, or null for the viewport. Not the layer itself: its
+ * overflow is ours, and it's hidden only where there are no scroll timelines (so nothing to match).
+ */
 function scrollContainer(el: HTMLElement): HTMLElement | null {
-  for (let n: HTMLElement | null = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+  for (let n = el.parentElement; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
     if (/^(auto|scroll|hidden|overlay)$/.test(getComputedStyle(n).overflowY)) return n;
   }
   return null;

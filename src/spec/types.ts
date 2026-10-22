@@ -86,7 +86,10 @@ export interface DrawInput {
 
 export interface AnimateInput {
   draw?: DrawInput | boolean;
-  /** Dashes march along the line (needs `dash`). Speed in px per second, default 60. */
+  /**
+   * Dashes march along the line (needs `dash`). Speed in px per second, default 60. Not for tapered lines,
+   * `along` paint or off-centre bands, whose dashes are drawn as shapes.
+   */
   flow?: { speed?: number } | boolean;
   /** Patterns travel along the line. Speed in px per second, default 40. */
   undulate?: { speed?: number } | boolean;

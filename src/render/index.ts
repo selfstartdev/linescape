@@ -3,11 +3,11 @@
  * which serialize() writes as a string and linescape/react maps to elements, so
  * both always draw the same thing.
  */
-import { buildCurve } from "../curve";
+import { buildCurve, undulateWavelength } from "../curve";
 import { emit } from "../emit";
 import { outline, type Cap } from "../emit/outline";
 import { cornersOf, frameAt, measurePath, slicePath, type MeasuredPath } from "../emit/slice";
-import { add, bounds, formatNumber, formatPath, scale, sub, type Bounds, type PathData } from "../geometry";
+import { add, bounds, formatNumber, formatPath, scale, sub, type Bounds, type PathData, type Vec } from "../geometry";
 import { hashString } from "../random";
 import type { Size } from "../spec/position";
 import { resolve } from "../spec/resolve";
@@ -57,10 +57,21 @@ const UNDULATE_FRAMES = 12;
 
 const node = (tag: string, attrs: Record<string, string> = {}, children: (SvgNode | string)[] = []): SvgNode => ({ tag, attrs, children });
 
-export function render(lines: LinesInput, { width, height, idPrefix = "linescape", precision = 2, motion = true }: RenderOptions): RenderedLayer {
+export function render(lines: LinesInput, { width, height, idPrefix, precision = 2, motion = true }: RenderOptions): RenderedLayer {
   if (!(width > 0) || !(height > 0)) throw new RangeError(`linescape: width and height must be greater than 0, got ${width} × ${height}`);
   const list = (Array.isArray(lines) ? lines : [lines]) as (LineInput | Line)[];
-  const ctx: Context = { size: { width, height }, prefix: idPrefix, precision, motion, defs: new Map(), css: [], waitsForVisibility: false, followsScroll: false };
+  const ctx: Context = {
+    size: { width, height },
+    prefix: idPrefix ?? "linescape",
+    sized: idPrefix === undefined,
+    precision,
+    motion,
+    defs: new Map(),
+    css: [],
+    waitsForVisibility: false,
+    followsScroll: false,
+  };
+  idPrefix = ctx.prefix;
   const groups = list.map((input, i) => renderLine(resolve(input), i, ctx));
 
   const children: SvgNode[] = [];
@@ -76,6 +87,8 @@ export function render(lines: LinesInput, { width, height, idPrefix = "linescape
 interface Context {
   size: Size;
   prefix: string;
+  /** The default prefix is shared by every toSvg() output, so names include the size. */
+  sized: boolean;
   precision: number;
   motion: boolean;
   /** Deduplicated by id. */
@@ -88,10 +101,14 @@ interface Context {
 interface Geometry {
   path: PathData;
   d: string;
+  /** Each undulate frame (the first is path), or null. */
+  framePaths: PathData[] | null;
   /** d for each undulate frame (the first is d), or null. */
   frames: string[] | null;
   measured: MeasuredPath;
   length: number;
+  /** Arc-length range of the part inside the element: the path without its bleed past the edges. */
+  visible: [number, number];
   bounds: Bounds;
   closed: boolean;
 }
@@ -102,15 +119,38 @@ function geometry(line: Line, ctx: Context): Geometry {
   const curve = buildCurve(line, ctx.size, { uniform: !!undulate });
   const path = emit(curve, { uniform: !!undulate });
   const d = formatPath(path, ctx.precision);
-  let frames: string[] | null = null;
+  let framePaths: PathData[] | null = null;
   if (undulate) {
-    frames = [d];
+    framePaths = [path];
     for (let k = 1; k <= UNDULATE_FRAMES; k++) {
-      frames.push(formatPath(emit(buildCurve(line, ctx.size, { shift: k / UNDULATE_FRAMES, uniform: true }), { uniform: true }), ctx.precision));
+      framePaths.push(emit(buildCurve(line, ctx.size, { shift: k / UNDULATE_FRAMES, uniform: true }), { uniform: true }));
     }
   }
+  const frames = framePaths && framePaths.map((p, k) => (k === 0 ? d : formatPath(p, ctx.precision)));
   const measured = measurePath(path);
-  return { path, d, frames, measured, length: measured.length, bounds: bounds(path), closed: path.closed };
+  const L = measured.length;
+  const [startEdge, endEdge] = curve.edges;
+  const visible: [number, number] = [startEdge ? nearest(measured, startEdge, 0, L / 2) : 0, endEdge ? nearest(measured, endEdge, L / 2, L) : L];
+  return { path, d, framePaths, frames, measured, length: L, visible, bounds: bounds(path), closed: path.closed };
+}
+
+/** The arc length in [from, to] where the path passes closest to p. */
+function nearest(m: MeasuredPath, p: Vec, from: number, to: number): number {
+  const dist = (s: number) => Math.hypot(frameAt(m, s).p.x - p.x, frameAt(m, s).p.y - p.y);
+  const n = Math.max(8, Math.ceil((to - from) / 2));
+  let best = from;
+  for (let i = 1; i <= n; i++) {
+    const s = from + ((to - from) * i) / n;
+    if (dist(s) < dist(best)) best = s;
+  }
+  // Refine within a step either side.
+  let lo = Math.max(from, best - (to - from) / n), hi = Math.min(to, best + (to - from) / n);
+  for (let k = 0; k < 30; k++) {
+    const a = lo + (hi - lo) / 3, b = hi - (hi - lo) / 3;
+    if (dist(a) < dist(b)) hi = b;
+    else lo = a;
+  }
+  return (lo + hi) / 2;
 }
 
 const hasOffsets = (line: Line) => !!line.bands?.some((b) => b.offset);
@@ -118,28 +158,32 @@ const isAlong = (line: Line) => [line.paint, ...(line.bands ?? []).map((b) => b.
 
 function renderLine(line: Line, index: number, ctx: Context): SvgNode {
   const g = geometry(line, ctx);
-  // Names for this line's masks and animations. They depend on the spec, not the element's size,
-  // so re-rendering after a resize keeps the same elements and animations don't restart.
-  const key = hashString(JSON.stringify([index, line])).toString(36);
+  // Names for this line's masks and animations. With a prefix of its own (React's per-instance one) they
+  // depend on the spec, not the element's size, so re-rendering after a resize keeps the same elements and
+  // animations don't restart. With the default prefix the size is in there too: two toSvg() outputs of
+  // one line at different sizes, inlined in one page, must not share ids and keyframes.
+  const key = hashString(JSON.stringify(ctx.sized ? [index, line, ctx.size.width, ctx.size.height] : [index, line])).toString(36);
   const fmt = (n: number) => formatNumber(n, ctx.precision);
   const half = line.width / 2;
   const lineBox: Bounds = { minX: g.bounds.minX - half, minY: g.bounds.minY - half, maxX: g.bounds.maxX + half, maxY: g.bounds.maxY + half };
 
-  // Width along the line, for tapered lines (drawn as filled outlines).
+  // Width along the line, for tapered lines (drawn as filled outlines). Measured from the element's
+  // edges, not the ends of the bleed, so the taper is on screen.
   const taper = line.taper;
+  const [v0, v1] = g.visible;
   // Eased (1 − (1 − u)²) so the taper meets the full width without a kink.
   const ease = (u: number) => (u >= 1 ? 1 : u <= 0 ? 0 : 1 - (1 - u) * (1 - u));
   const widthAt = (w: number) => (s: number) => {
     if (!taper) return w;
     let k = 1;
-    if (taper.start > 0) k = Math.min(k, ease(s / taper.start));
-    if (taper.end > 0) k = Math.min(k, ease((g.length - s) / taper.end));
+    if (taper.start > 0) k = Math.min(k, ease((s - v0) / taper.start));
+    if (taper.end > 0) k = Math.min(k, ease((v1 - s) / taper.end));
     return w * k;
   };
 
   const undulate = (frames: string[] | null): SvgNode[] =>
     frames && line.animate?.undulate
-      ? [node("animate", { attributeName: "d", values: frames.join(";"), dur: `${fmt((line.patterns[0]!.wavelength / line.animate.undulate.speed) * 1000)}ms`, repeatCount: "indefinite" })]
+      ? [node("animate", { attributeName: "d", values: frames.join(";"), dur: `${fmt((undulateWavelength(line) / line.animate.undulate.speed) * 1000)}ms`, repeatCount: "indefinite" })]
       : [];
 
   const strokeAttrs = (w: number): Record<string, string> => ({
@@ -165,7 +209,15 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
     if (typeof paint === "object" && "along" in paint) return alongSlices(paint.along, w, offset);
     const ref = paintRef(paint, lineBox, ctx);
     if (taper || offset !== 0) {
-      const d = formatPath(outline(g.measured, 0, g.length, { width: widthAt(w), offset: () => offset, capStart: line.cap, capEnd: line.cap, closed: g.closed }), ctx.precision);
+      // A filled outline can't be dashed by the stroke, so each dash is an outline of its own. (It can't
+      // flow either: `flow` animates the stroke's dash offset.)
+      const pieces: [number, number][] = line.dash ? dashes(line.dash, g.length, line.cap) : [[0, g.length]];
+      const whole = !line.dash;
+      const d = pieces
+        .map(([a, b]) =>
+          formatPath(outline(g.measured, a, b, { width: widthAt(w), offset: () => offset, capStart: line.cap, capEnd: line.cap, closed: whole && g.closed }), ctx.precision),
+        )
+        .join("");
       return [node("path", { d, fill: ref })];
     }
     const attrs: Record<string, string> = { d: g.d, ...strokeAttrs(w), stroke: ref };
@@ -181,7 +233,10 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
       if (!color) throw new TypeError(`linescape: along stop ${i} has colour ${JSON.stringify(s.color)}, which can't be blended; use hex, rgb(), hsl() or a named colour`);
       return { offset: s.offset, color };
     });
-    const colour = (s: number) => colorAt(parsed, g.length > 0 ? s / g.length : 0);
+    // colorAt needs ascending offsets; sorted as gradient stops are (stable, so ties keep their order).
+    parsed.sort((a, b) => a.offset - b.offset);
+    // 0 to 1 across the part on screen, so the end colours are at the element's edges.
+    const colour = (s: number) => colorAt(parsed, v1 > v0 ? Math.min(1, Math.max(0, (s - v0) / (v1 - v0))) : 0);
     const out: SvgNode[] = [];
     const fill = (c: RGBA, attr: "fill" | "stroke") => ({ [attr]: toHex(c), ...(c.a < 1 ? { [`${attr}-opacity`]: fmt(c.a) } : {}) });
     const n = Math.max(16, Math.min(outlined ? 200 : 600, Math.ceil(g.length / (outlined ? 8 : 4))));
@@ -203,7 +258,9 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
         out.push(node("path", { d: formatPath(outline(g.measured, a, b, { width: widthAt(w), offset: () => offset, capStart, capEnd, closed: false }), ctx.precision), ...fill(c, "fill") }));
       } else {
         const attrs: Record<string, string> = { d: formatPath(slicePath(g.measured, a, b), ctx.precision), ...strokeAttrs(w), ...fill(c, "stroke") };
-        attrs["stroke-linecap"] = i === 0 || i === n - 1 ? line.cap : "butt";
+        // Butt where slices meet, so seams don't show. Not on dashed lines: each dash needs its own caps
+        // (dots are zero-length dashes, nothing but caps).
+        attrs["stroke-linecap"] = line.dash || i === 0 || i === n - 1 ? line.cap : "butt";
         if (line.dash) {
           attrs["stroke-dasharray"] = line.dash.map(fmt).join(" ");
           attrs["stroke-dashoffset"] = fmt(a);
@@ -238,14 +295,19 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
       const s = frameAt(m, 0), e = frameAt(m, m.length);
       return { start: sub(s.p, scale(s.t, pad)), segments: [{ type: "L", to: p.start }, ...p.segments, { type: "L", to: add(e.p, scale(e.t, pad)) }], closed: false };
     };
-    const total = g.length + 2 * pad + 2;
     const className = cssName(ctx, "draw", key);
     const center = draw.from === "center" || g.closed;
+    // From the centre, the dash grows both ways from the middle of the part on screen (in the mask path's
+    // arc length, which starts `pad` before the line). Its full length is twice the longer side, so it
+    // ends up covering the whole mask path whichever side that is.
+    const middle = pad + (v0 + v1) / 2 + 1;
+    const total = draw.from === "center" ? 2 * Math.max(middle, g.length + 2 * pad + 2 - middle) : g.length + 2 * pad + 2;
     const from = draw.from === "center"
-      ? `stroke-dasharray:0 ${fmt(total)};stroke-dashoffset:${fmt(-total / 2)}`
+      ? `stroke-dasharray:0 ${fmt(total)};stroke-dashoffset:${fmt(-middle)}`
       : `stroke-dashoffset:${fmt(draw.from === "end" ? -total : total)}`;
+    const toOffset = draw.from === "center" ? total / 2 - middle : 0;
     const timing = `${fmt(draw.duration)}ms ${draw.easing} ${fmt(draw.delay)}ms ${line.animate!.repeat === "infinite" ? "infinite" : fmt(line.animate!.repeat)} both`;
-    const keyframes = (name: string) => `@keyframes ${name}{from{${from}}to{stroke-dasharray:${fmt(total)} ${fmt(total)};stroke-dashoffset:0}}`;
+    const keyframes = (name: string) => `@keyframes ${name}{from{${from}}to{stroke-dasharray:${fmt(total)} ${fmt(total)};stroke-dashoffset:${fmt(toOffset)}}}`;
     ctx.css.push(keyframes(className), `.${className}{animation:${className} ${timing}}`);
     if (line.animate!.trigger === "scroll") {
       ctx.followsScroll = true;
@@ -263,13 +325,7 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
     }
     ctx.css.push(`@media (prefers-reduced-motion:reduce){.${className}{animation:none}}`);
     // An undulating line needs its mask to undulate with it.
-    let maskFrames: string[] | null = null;
-    if (g.frames) {
-      maskFrames = [formatPath(padded(g.path), ctx.precision)];
-      for (let k = 1; k <= UNDULATE_FRAMES; k++) {
-        maskFrames.push(formatPath(padded(emit(buildCurve(line, ctx.size, { shift: k / UNDULATE_FRAMES, uniform: true }), { uniform: true })), ctx.precision));
-      }
-    }
+    const maskFrames = g.framePaths && g.framePaths.map((p) => formatPath(padded(p), ctx.precision));
     const maskPath = node(
       "path",
       {
@@ -280,6 +336,7 @@ function renderLine(line: Line, index: number, ctx: Context): SvgNode {
         "stroke-linecap": center ? "butt" : "round",
         "stroke-linejoin": "round",
         "stroke-dasharray": `${fmt(total)} ${fmt(total)}`,
+        ...(toOffset ? { "stroke-dashoffset": fmt(toOffset) } : {}),
         class: className,
       },
       undulate(maskFrames),
@@ -306,6 +363,26 @@ function maskGroup(ctx: Context, kind: string, key: string, shapes: SvgNode[], c
   const id = `${ctx.prefix}-${kind}-${key}`;
   ctx.defs.set(id, node("mask", { id, ...attrs }, shapes));
   return node("g", { mask: `url(#${id})` }, content);
+}
+
+/**
+ * The dashes of a dash pattern along a path `length` long, as arc-length ranges: what the stroke would
+ * draw, for shapes drawn as outlines. Zero-length dashes (dots) get a sliver of length so their caps show;
+ * with butt caps they draw nothing, as with a stroke.
+ */
+function dashes(pattern: readonly number[], length: number, cap: Cap): [number, number][] {
+  const cycle = pattern.length % 2 === 1 ? [...pattern, ...pattern] : pattern;
+  if (!(cycle.reduce((a, b) => a + b, 0) > 0)) return [[0, length]];
+  const out: [number, number][] = [];
+  for (let s = 0, i = 0; s < length; i = (i + 1) % cycle.length) {
+    const end = Math.min(length, s + cycle[i]!);
+    if (i % 2 === 0) {
+      if (end > s) out.push([s, end]);
+      else if (cap !== "butt") out.push([s, Math.min(length, s + 0.01)]);
+    }
+    s += cycle[i]!;
+  }
+  return out;
 }
 
 function cssName(ctx: Context, kind: string, key: string): string {

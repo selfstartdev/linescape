@@ -186,8 +186,10 @@ function resolvePaint(name: string, paint: Paint): Paint {
 function resolveAnimate(a: AnimateInput | undefined): Animate | null {
   if (!a) return null;
   // null is how a resolved Line spells "off", so resolving a Line again keeps it off.
+  // A field set to undefined keeps its default, as `??` does everywhere else: { duration: props.duration }.
+  const defined = (v: object) => Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined));
   const pick = <T extends object>(v: T | boolean | null | undefined, defaults: Required<T>): Required<T> | null =>
-    v === undefined || v === null || v === false ? null : { ...defaults, ...(v === true ? {} : v) };
+    v === undefined || v === null || v === false ? null : ({ ...defaults, ...(v === true ? {} : defined(v)) } as Required<T>);
   const draw = pick(a.draw, ANIMATE_DEFAULTS.draw as Required<NonNullable<Exclude<AnimateInput["draw"], boolean>>>);
   if (draw) {
     nonNegative("animate.draw.duration", draw.duration);

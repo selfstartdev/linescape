@@ -21,8 +21,14 @@ class FakeResizeObserver {
   }
 }
 const intersections = new Set<(entries: { isIntersecting: boolean }[]) => void>();
+const thresholds: number[] = [];
 class FakeIntersectionObserver {
-  constructor(private readonly cb: (entries: { isIntersecting: boolean }[]) => void) {}
+  constructor(
+    private readonly cb: (entries: { isIntersecting: boolean }[]) => void,
+    options?: { threshold?: number },
+  ) {
+    thresholds.push(options?.threshold ?? 0);
+  }
   observe() {
     intersections.add(this.cb);
   }
@@ -49,6 +55,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   observers.clear();
   intersections.clear();
+  thresholds.length = 0;
   document.body.innerHTML = "";
 });
 
@@ -216,6 +223,22 @@ describe("<Linescape>", () => {
   it("clips without making the layer a scroll container", async () => {
     const { container } = await hydrate({ line: designs.band });
     expect(layerOf(container).style.overflow).toBe("clip");
+  });
+
+  it("clips with hidden where clip isn't supported", async () => {
+    vi.stubGlobal("CSS", { supports: (p: string) => p !== "overflow" });
+    const { container } = await hydrate({ line: designs.band });
+    expect(layerOf(container).style.overflow).toBe("hidden");
+  });
+
+  it("can see a layer many windows tall: the threshold is a share of the window, not of the layer", async () => {
+    vi.stubGlobal("innerHeight", 900);
+    layerSize = { width: 1200, height: 8000 };
+    await hydrate({ line: { path: { from: "left", to: "right" }, animate: { draw: true, trigger: "visible" } } });
+    const t = thresholds[thresholds.length - 1]!;
+    // 15% of the window, as a share of the layer, and reachable with the layer filling the window.
+    expect(t).toBeCloseTo((0.15 * 900) / 8000, 6);
+    expect(t).toBeLessThanOrEqual(900 / 8000);
   });
 
   it("drops undulation for reduced motion", async () => {

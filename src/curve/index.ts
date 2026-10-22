@@ -21,10 +21,15 @@ export interface Curve {
   pieces: Piece[];
   closed: boolean;
   backbone: Backbone;
+  /**
+   * Where the curve meets the element's edge at each end, or null where it doesn't bleed past it (closed
+   * paths, spirals, ends inside the element). Taper and `along` colours are measured from these points.
+   */
+  edges: [start: Vec | null, end: Vec | null];
 }
 
 export interface CurveOptions {
-  /** Added to every pattern's phase, in wavelengths of the first pattern (used by `undulate`). */
+  /** Added to every pattern's phase, in wavelengths of the longest pattern (used by `undulate`). */
   shift?: number;
   /**
    * Fixed sampling that doesn't depend on pattern phase, so every frame of an
@@ -72,17 +77,21 @@ export function buildCurve(line: Line, size: Size, { shift = 0, uniform = false 
   // Range ends at 0 or 1 reach through the bleed, so a pattern runs right off the edge.
   const toS = (f: number) => (closed ? f * L : f === 0 ? 0 : f === 1 ? L : v0 + f * (v1 - v0));
 
-  const firstWavelength = line.patterns[0]?.wavelength ?? 1;
+  const cycle = undulateWavelength(line);
   const patterns: ActivePattern[] = line.patterns.map((p: Pattern) => {
     const a = toS(p.range[0]), b = toS(p.range[1]);
     // A whole number of repeats fits the range, so the pattern ends where it started (back on the
     // backbone) instead of breaking off mid-wave. On a closed ring that also makes it meet itself.
     const wavelength = (b - a) / Math.max(1, Math.round((b - a) / p.wavelength));
-    // Every pattern moves a whole number of its own wavelengths per undulate cycle, so the cycle loops seamlessly.
-    const cycles = Math.max(1, Math.round(firstWavelength / p.wavelength));
+    // Every pattern moves a whole number of its own wavelengths per undulate cycle, so the cycle loops
+    // seamlessly. The cycle is the longest pattern's, so each one's speed is as close to `speed` as whole
+    // numbers allow (exact when the wavelengths divide the longest).
+    const cycles = Math.max(1, Math.round(cycle / p.wavelength));
     const phase = p.phase - shift * cycles;
-    // Shifted along (by phase, or while undulating), a pattern no longer starts at zero: ease it in and out.
-    const shifted = uniform || Math.abs(phase - Math.round(phase)) > 1e-9;
+    // Shifted along (by phase, or while undulating), a pattern no longer starts at zero: ease it in and
+    // out. Not round a whole ring, where it already meets itself.
+    const wholeRing = closed && a <= 0 && b >= L;
+    const shifted = !wholeRing && (uniform || Math.abs(phase - Math.round(phase)) > 1e-9);
     return {
       profile: PROFILES[p.type],
       amplitude: p.amplitude,
@@ -115,12 +124,16 @@ export function buildCurve(line: Line, size: Size, { shift = 0, uniform = false 
     }
   }
 
+  // On a closed path a feature near the seam reaches past 0 or L: look for t a lap either side too.
+  const laps = closed ? [0, -L, L] : [0];
+  const wrap = (t: number) => (closed ? ((t % L) + L) % L : t);
+
   // Patterns fade out around features, so a loop or kink always starts from the plain backbone.
   const mask = (t: number): number => {
     let m = 1;
     for (const f of features) {
       const gap = Math.min(60, (f.b - f.a) / 2);
-      const outside = t < f.a ? f.a - t : t > f.b ? t - f.b : 0;
+      const outside = Math.min(...laps.map((k) => (t + k < f.a ? f.a - t - k : t + k > f.b ? t + k - f.b : 0)));
       m *= outside === 0 ? 0 : smoothstep(outside / gap);
     }
     return m;
@@ -141,8 +154,9 @@ export function buildCurve(line: Line, size: Size, { shift = 0, uniform = false 
       }
     }
     for (const f of features) {
-      if (t <= f.a || t >= f.b) continue;
-      const o = f.profile.at((t - f.a) / f.wavelength, f.amplitude, f.wavelength);
+      const k = laps.find((k) => t + k > f.a && t + k < f.b);
+      if (k === undefined) continue;
+      const o = f.profile.at((t + k - f.a) / f.wavelength, f.amplitude, f.wavelength);
       dx += o.dx;
       dy += o.dy * f.sign;
     }
@@ -168,9 +182,9 @@ export function buildCurve(line: Line, size: Size, { shift = 0, uniform = false 
     }
   }
   for (const f of features) {
-    breaks.add(f.a);
-    breaks.add(f.b);
-    for (const c of f.profile.corners) if (c > 0) breaks.add(f.a + c * f.wavelength);
+    breaks.add(wrap(f.a));
+    breaks.add(wrap(f.b));
+    for (const c of f.profile.corners) if (c > 0) breaks.add(wrap(f.a + c * f.wavelength));
   }
   const knots = [0, ...[...breaks].filter((t) => t > 1e-6 && t < L - 1e-6).sort((x, y) => x - y), L].filter(
     (t, i, all) => i === 0 || t - all[i - 1]! > 1e-6,
@@ -201,7 +215,16 @@ export function buildCurve(line: Line, size: Size, { shift = 0, uniform = false 
     }
   }
 
-  return { pieces, closed, backbone };
+  const edges: Curve["edges"] = [
+    !closed && !spiralStart && v0 > 1e-6 ? main(v0) : null,
+    !closed && !spiralEnd && v1 < L - 1e-6 ? main(v1) : null,
+  ];
+  return { pieces, closed, backbone, edges };
+}
+
+/** The wavelength one undulate cycle moves by: the longest pattern's. */
+export function undulateWavelength(line: Line): number {
+  return Math.max(1, ...line.patterns.map((p) => p.wavelength));
 }
 
 /**

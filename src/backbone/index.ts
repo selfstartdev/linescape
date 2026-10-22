@@ -9,6 +9,7 @@ import {
   dot,
   fromAngle,
   lerp,
+  mapPath,
   normalize,
   rightOf,
   scale,
@@ -63,8 +64,10 @@ export function buildBackbone(path: PathInput, size: Size, { width, bleedStart =
     const p = resolvePoint(path.through, size);
     const dir = fromAngle(path.angle);
     const outer = clipLine(p, dir, { minX: -r, minY: -r, maxX: size.width + r, maxY: size.height + r });
-    const [t0, t1] = outer ?? [-100, 100];
     const inner = clipLine(p, dir, { minX: 0, minY: 0, maxX: size.width, maxY: size.height });
+    // An end without bleed (a spiral is attached there) stops at the edge, as from–to lines do.
+    const t0 = inner && !bleedStart ? inner[0] : (outer?.[0] ?? -100);
+    const t1 = inner && !bleedEnd ? inner[1] : (outer?.[1] ?? 100);
     const start = add(p, scale(dir, t0));
     const data: PathData = { start, segments: [{ type: "L", to: add(p, scale(dir, t1)) }], closed: false };
     const visible: [number, number] = inner ? [inner[0] - t0, inner[1] - t0] : [0, t1 - t0];
@@ -101,7 +104,7 @@ export function buildBackbone(path: PathInput, size: Size, { width, bleedStart =
     if (path.viewBox) {
       const [vx, vy, vw, vh] = path.viewBox;
       const sx = size.width / vw, sy = size.height / vh;
-      data = mapPoints(data, (p) => ({ x: (p.x - vx) * sx, y: (p.y - vy) * sy }));
+      data = mapPath(data, (p) => ({ x: (p.x - vx) * sx, y: (p.y - vy) * sy }));
     }
   }
 
@@ -140,16 +143,6 @@ export function buildBackbone(path: PathInput, size: Size, { width, bleedStart =
 }
 
 const endOf = (s: Segment) => s.to;
-
-function mapPoints(data: PathData, fn: (p: Vec) => Vec): PathData {
-  return {
-    start: fn(data.start),
-    closed: data.closed,
-    segments: data.segments.map((s): Segment =>
-      s.type === "L" ? { type: "L", to: fn(s.to) } : s.type === "Q" ? { type: "Q", control: fn(s.control), to: fn(s.to) } : { type: "C", c1: fn(s.c1), c2: fn(s.c2), to: fn(s.to) },
-    ),
-  };
-}
 
 interface Rect {
   minX: number;
